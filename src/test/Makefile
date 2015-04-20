@@ -1,25 +1,23 @@
 WARN=-pedantic -Wall -Wshadow -Wpointer-arith -Wcast-qual \
 	-Wstrict-prototypes 
 CFLAGS=-g $(WARN) -std=c99
-CINCFLAGS=
-LDFLAGS=
+CINCFLAGS=$(shell pkg-config --cflags check) -I..
+LDFLAGS=$(shell pkg-config --libs check)
 CC=gcc
-TARGET=cmoo
-SUBDIRS=test
+TARGET=cmoo_check
+SUBDIRS=
 
 SOURCES=$(shell ls *.c)
 OBJECTS=$(subst .c,.o,$(SOURCES))
+TESTED_OBJECTS=../types.o
 
-.PHONY: all clean check $(SUBDIRS)
+.PHONY: all clean check
 
-all: $(TARGET) $(SUBDIRS)
+all: $(TARGET)
 
-$(SUBDIRS):
-	@$(MAKE) -C $@
-
-$(TARGET): $(OBJECTS)
+$(TARGET): $(OBJECTS) $(TESTED_OBJECTS)
 	@echo "Linking $@..."
-	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 %.o: %.c
 	@echo "Compiling $<..."
@@ -30,11 +28,9 @@ clean:
 	@echo "Cleaning..."
 	@rm -f *.o *.d
 	@rm -f $(TARGET)
-	@for dir in $(SUBDIRS); do \
-		$(MAKE) -C $$dir clean; \
-	done
 
-check: $(OBJECTS) $(SUBDIRS)
-	make -C test check
+check: $(TARGET)
+	@echo "Running Unit Tests..."
+	@./$(TARGET)
 
 -include *.d
