@@ -1,4 +1,4 @@
-WARN=-pedantic -Wall -Wshadow -Wpointer-arith -Wcast-qual \
+WARN=-Wall -Wshadow -Wpointer-arith -Wcast-qual \
 	-Wstrict-prototypes 
 CFLAGS=-g $(WARN) -std=c99
 CINCFLAGS=$(shell pkg-config --cflags check) -I..
