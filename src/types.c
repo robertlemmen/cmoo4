@@ -1,28 +1,30 @@
 #include "types.h"
 
+#include <assert.h>
+
 int val_type(val v) {
-    // XXX
-    return 0;
+    return v & 0x7;;
 }
 
 val val_make_nil(void) {
-    // XXX
     return 0;
 }
 
 val val_make_bool(bool i) {
-    // XXX
-    return 0;
+    return (i << 4) | TYPE_BOOL;
 }
 
 val val_make_int(int i) {
-    // XXX
-    return 0;
+    return (i << 4) | TYPE_INT;
 }
 
 val val_make_float(float i) {
-    // XXX
-    return 0;
+    union {
+        uint32_t i;
+        float f;
+    } fv;
+    fv.f = i;
+    return ((val)fv.i << 4) | TYPE_FLOAT;
 }
 
 void val_clear(val *v) {
@@ -30,16 +32,21 @@ void val_clear(val *v) {
 }
 
 bool val_get_bool(val v) {
-    // XXX
-    return false;
+    assert((v & 0x7) == TYPE_BOOL);
+    return v >> 4;
 }
 
 int val_get_int(val v) {
-    // XXX
-    return 0;
+    assert((v & 0x7) == TYPE_INT);
+    return v >> 4;
 }
 
 float val_get_float(val v) {
-    // XXX
-    return 0.0;
+    assert((v & 0x7) == TYPE_FLOAT);
+    union {
+        uint32_t i;
+        float f;
+    } fv;
+    fv.i = (v >> 4);
+    return fv.f;
 }
