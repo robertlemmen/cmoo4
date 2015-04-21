@@ -15,7 +15,8 @@ val val_make_bool(bool i) {
 }
 
 val val_make_int(int i) {
-    return (i << 4) | TYPE_INT;
+    
+    return ((int64_t)i << 4) | TYPE_INT;
 }
 
 val val_make_float(float i) {

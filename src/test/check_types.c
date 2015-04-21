@@ -23,6 +23,9 @@ START_TEST(test_types_01) {
     v = val_make_int(-5678);
     ck_assert(val_type(v) == TYPE_INT);
     ck_assert(val_get_int(v) == -5678);
+    v = val_make_int(0x77777777);
+    ck_assert(val_type(v) == TYPE_INT);
+    ck_assert(val_get_int(v) == 0x77777777);
 
     v = val_make_float(3.1415);
     ck_assert(val_type(v) == TYPE_FLOAT);

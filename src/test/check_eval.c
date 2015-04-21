@@ -6,11 +6,14 @@
 #include "eval.h"
 
 struct eval_trace {
-    int sum;
+    long sum;
 };
 
 void eval_debug_callback(val v, void *a) {
     struct eval_trace *et = (struct eval_trace*)a;
+
+    ck_assert(val_type(v) == TYPE_INT);
+
     et->sum += val_get_int(v);
 }
 
@@ -21,11 +24,17 @@ START_TEST(test_eval_01) {
     et.sum = 0;
     eval_set_dbg_handler(ex, &eval_debug_callback, &et);
   
-    opcode code[] = {0x00, 0x00, 0x02, 0x01};
+    opcode code[] = {   OP_NOOP, 
+                        OP_NOOP, 
+                        OP_DEBUGI, 0x12, 0x34, 0x56, 0x78, 
+                        OP_NOOP, 
+                        OP_DEBUGI, 0xC0, 0x00, 0x00, 0x00, 
+                        OP_NOOP, 
+                        OP_HALT};
 
     eval_exec(ex, code);
 
-    ck_assert(et.sum == 42);
+    ck_assert(et.sum == 0x785634D2);
 
     eval_free_ctx(ex); 
 }

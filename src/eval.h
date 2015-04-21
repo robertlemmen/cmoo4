@@ -89,7 +89,7 @@
  * */
 
 #define OP_NOOP              0 // no-op
-#define OP_ABORT             1 // abort
+#define OP_HALT              1 // halt code execution
 #define OP_DEBUGI            2 // int32:msg      
 #define OP_DEBUGR            3 // reg8:msg
 #define OP_MOV               4 // reg8:dst <- reg8:src

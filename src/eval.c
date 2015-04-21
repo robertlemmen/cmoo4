@@ -52,7 +52,7 @@ void eval_free_ctx(struct eval_ctx *ctx) {
 void eval_exec(struct eval_ctx *ctx, opcode *code) {
     void* dispatch_table[] = {
         &&do_noop,
-        &&do_abort,
+        &&do_halt,
         &&do_debugi,
         &&do_debugr,
         &&do_mov,
@@ -88,20 +88,26 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
     opcode *ip = code;
     printf(",---------------------------------,\n");
     DISPATCH();
+    // some vars we need below, can't be declared after label...
+    int32_t *msg;
     while(1) {
         do_noop:
             printf("| NOOP                            |\n");
             DISPATCH();
-        do_abort:
-            printf("| ABORT                           |\n");
+        do_halt:
+            // XXX this should really be HALT
+            printf("| HALT                            |\n");
+            printf("'---------------------------------'\n");
             return;
             DISPATCH();
         do_debugi:
             // XXX decode argument and pass in
-            printf("| DEBUGI                          |\n");
+            msg = (int32_t*)ip;
+            printf("| DEBUGI 0x%08X               |\n", *msg);
             if (ctx->callback) {
-                ctx->callback(val_make_int(42), ctx->cb_arg);
+                ctx->callback(val_make_int(*msg), ctx->cb_arg);
             }
+            ip += 4;
             DISPATCH();
         do_debugr:
             DISPATCH();
