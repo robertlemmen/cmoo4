@@ -2,11 +2,13 @@
 #include <stdlib.h>
 
 #include "check_types.h"
+#include "check_eval.h"
 
 int main(int argc, char **argv) {
     Suite *s = suite_create("CMOO");
 
     suite_add_tcase(s, make_types_checks());
+    suite_add_tcase(s, make_eval_checks());
 
     SRunner *sr = srunner_create(s);
     srunner_run_all(sr, CK_NORMAL);

@@ -9,7 +9,7 @@ SUBDIRS=
 
 SOURCES=$(shell ls *.c)
 OBJECTS=$(subst .c,.o,$(SOURCES))
-TESTED_OBJECTS=../types.o
+TESTED_OBJECTS=../types.o ../eval.o
 
 .PHONY: all clean check
 

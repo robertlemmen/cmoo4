@@ -21,15 +21,27 @@ struct eval_ctx {
     // the actual stack
     union stack_element *stack;
     union stack_element *stack_top;
+    // debug handler
+    void (*callback)(val v, void *a);
+    void *cb_arg;
 };
 
 struct eval_ctx* eval_new_ctx(void) {
     struct eval_ctx *ret = malloc(sizeof(struct eval_ctx));
     ret->stack = malloc(sizeof(union stack_element) * INITIAL_STACK_SIZE);
-    ret->stack_top = ret->stack + sizeof(union stack_element) * INITIAL_STACK_SIZE;
+    ret->stack_top = ret->stack 
+        + sizeof(union stack_element) * INITIAL_STACK_SIZE;
     ret->fp = ret->stack;
     ret->sp = ret->stack;
+    ret->callback = NULL;
     return ret;
+}
+
+void eval_set_dbg_handler(struct eval_ctx *ctx, 
+        void (*callback)(val v, void *a), 
+        void *a) {
+    ctx->callback = callback;
+    ctx->cb_arg = a;
 }
 
 void eval_free_ctx(struct eval_ctx *ctx) {
@@ -37,7 +49,7 @@ void eval_free_ctx(struct eval_ctx *ctx) {
     free(ctx);
 }
 
-void eval(struct eval_ctx *ctx, opcode *code) {
+void eval_exec(struct eval_ctx *ctx, opcode *code) {
     void* dispatch_table[] = {
         &&do_noop,
         &&do_abort,
@@ -85,6 +97,11 @@ void eval(struct eval_ctx *ctx, opcode *code) {
             return;
             DISPATCH();
         do_debugi:
+            // XXX decode argument and pass in
+            printf("| DEBUGI                          |\n");
+            if (ctx->callback) {
+                ctx->callback(val_make_int(42), ctx->cb_arg);
+            }
             DISPATCH();
         do_debugr:
             DISPATCH();

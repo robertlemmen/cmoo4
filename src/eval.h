@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "types.h"
+
 /* the virtual machine in CMOO uses a stack where elements can be accessed 
  * indexed as well. to do this we have a stack pointer SP, a frame pointer FB 
  * and an instruction pointer IP. The instructions are 1-octet in length but 
@@ -22,12 +24,13 @@
  *
  * In this case the current method has been called with two arguments, and has
  * reserved one local variable (at FP[2]). the intermediate value has been 
- * created with e.g. PUSH. Note that the arguments, locals and intermediate cells
- * hold *values*, the return address and previous FP hold VM-internal addresses.
+ * created with e.g. PUSH. Note that the arguments, locals and intermediate 
+ * cells hold *values*, the return address and previous FP hold VM-internal 
+ * addresses.
  *
  * When calling a method, the steck needs to have the arguments at the top, 
- * followed by a string naming the method and an objref naming the object to call 
- * on:
+ * followed by a string naming the method and an objref naming the object to 
+ * call on:
  *
  * | argument0      | <- SP
  * | method name    |
@@ -85,38 +88,38 @@
  * the instruction.
  * */
 
-#define OP_NOOP              0  // no-op
-#define OP_ABORT             1  // abort
-#define OP_DEBUGI            2  // int32:msg      
-#define OP_DEBUGR            3  // reg8:msg
-#define OP_MOV               4  // reg8:dst <- reg8:src
-#define OP_PUSH              5  // SP++ <- reg8:src
-#define OP_POP               6  // reg8:dst <- SP--
-#define OP_CALL              7  // int8:nargs
-#define OP_RETURN            8  // reg8:value
-#define OP_ARGS_LOCALS       9  // assert we have int8:nargs and 
-                                // reserve int8:nlocals on the stack
-#define OP_CLEAR            10  // reg8:dst <= NIL
-#define OP_TRUE             11  // reg8:dst <= BOOL(TRUE)
-#define OP_LOAD_INT         12  // reg8:dst <- int32:value
-#define OP_LOAD_FLOAT       13  // reg8:dst <- float32:value
-#define OP_TYPE             14  // reg8:dst <- type(reg8:src)
-#define OP_LOGICAL_AND      15  // reg8:dst <- logical_and(reg8:src1, reg8:src2)
-#define OP_LOGICAL_OR       16  // reg8:dst <- logical_or(reg8:src1, reg8:src2)
-#define OP_EQ               17  // reg8:dst <- eq(reg8:src1, reg8:src2)
-#define OP_LQ               18  // reg8:dst <- lq(reg8:src1, reg8:src2)
-#define OP_LT               19  // reg8:dst <- lt(reg8:src1, reg8:src2)
-#define OP_ADD              20  // reg8:dst <- reg8:src1 + reg8:src2
-#define OP_SUB              21  // reg8:dst <- reg8:src1 - reg8:src2
-#define OP_MUL              22  // reg8:dst <- reg8:src1 * reg8:src2
-#define OP_DIV              23  // reg8:dst <- reg8:src1 / reg8:src2
-#define OP_MOD              24  // reg8:dst <- reg8:src1 % reg8:src2
-#define OP_JUMP             25  // IP += int32:offset
-#define OP_JUMP_IF          26  // IP += int32:offset if reg8:src is TRUE
-#define OP_JUMP_EQ          27  // IP += int32:offset if eq(reg8:src1, reg8:src2)
-#define OP_JUMP_NE          28  // IP += int32:offset if ne(reg8:src1, reg8:src2)
-#define OP_JUMP_LE          29  // IP += int32:offset if le(reg8:src1, reg8:src2)
-#define OP_JUMP_LT          30  // IP += int32:offset if lt(reg8:src1, reg8:src2)
+#define OP_NOOP              0 // no-op
+#define OP_ABORT             1 // abort
+#define OP_DEBUGI            2 // int32:msg      
+#define OP_DEBUGR            3 // reg8:msg
+#define OP_MOV               4 // reg8:dst <- reg8:src
+#define OP_PUSH              5 // SP++ <- reg8:src
+#define OP_POP               6 // reg8:dst <- SP--
+#define OP_CALL              7 // int8:nargs
+#define OP_RETURN            8 // reg8:value
+#define OP_ARGS_LOCALS       9 // assert we have int8:nargs and 
+                               // reserve int8:nlocals on the stack
+#define OP_CLEAR            10 // reg8:dst <= NIL
+#define OP_TRUE             11 // reg8:dst <= BOOL(TRUE)
+#define OP_LOAD_INT         12 // reg8:dst <- int32:value
+#define OP_LOAD_FLOAT       13 // reg8:dst <- float32:value
+#define OP_TYPE             14 // reg8:dst <- type(reg8:src)
+#define OP_LOGICAL_AND      15 // reg8:dst <- logical_and(reg8:src1, reg8:src2)
+#define OP_LOGICAL_OR       16 // reg8:dst <- logical_or(reg8:src1, reg8:src2)
+#define OP_EQ               17 // reg8:dst <- eq(reg8:src1, reg8:src2)
+#define OP_LQ               18 // reg8:dst <- lq(reg8:src1, reg8:src2)
+#define OP_LT               19 // reg8:dst <- lt(reg8:src1, reg8:src2)
+#define OP_ADD              20 // reg8:dst <- reg8:src1 + reg8:src2
+#define OP_SUB              21 // reg8:dst <- reg8:src1 - reg8:src2
+#define OP_MUL              22 // reg8:dst <- reg8:src1 * reg8:src2
+#define OP_DIV              23 // reg8:dst <- reg8:src1 / reg8:src2
+#define OP_MOD              24 // reg8:dst <- reg8:src1 % reg8:src2
+#define OP_JUMP             25 // IP += int32:offset
+#define OP_JUMP_IF          26 // IP += int32:offset if reg8:src is TRUE
+#define OP_JUMP_EQ          27 // IP += int32:offset if eq(reg8:src1, reg8:src2)
+#define OP_JUMP_NE          28 // IP += int32:offset if ne(reg8:src1, reg8:src2)
+#define OP_JUMP_LE          29 // IP += int32:offset if le(reg8:src1, reg8:src2)
+#define OP_JUMP_LT          30 // IP += int32:offset if lt(reg8:src1, reg8:src2)
 // XXX more ops
 
 typedef uint8_t opcode;
@@ -126,9 +129,16 @@ struct eval_ctx;
 struct eval_ctx* eval_new_ctx(void);
 void eval_free_ctx(struct eval_ctx *ctx);
 
+// set a callback that gets executed whenever OP_DEBUGI or OP_DEBUGR gets
+// executed, this mainly for testing. whenever the callback gets executed, the
+// argument a gets passed to it as well
+void eval_set_dbg_handler(struct eval_ctx *ctx, 
+    void (*callback)(val v, void *a), 
+    void *a);
+
 // XXX temporary clutch to allow direct execution of code without objects and the like
 // it may be a good idea to allow direct calls anyway! then each slot could have
 // sub-methods...
-void eval(struct eval_ctx *ctx, opcode *code);
+void eval_exec(struct eval_ctx *ctx, opcode *code);
 
 #endif /* EVAL_H */
