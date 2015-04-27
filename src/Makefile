@@ -1,6 +1,6 @@
 WARN=-Wall -Wshadow -Wpointer-arith -Wcast-qual \
 	-Wstrict-prototypes 
-CFLAGS=-g $(WARN) -std=c99
+CFLAGS=-g $(WARN) -std=c11
 CINCFLAGS=
 LDFLAGS=
 CC=gcc
