@@ -12,9 +12,15 @@ struct eval_trace {
 void eval_debug_callback(val v, void *a) {
     struct eval_trace *et = (struct eval_trace*)a;
 
-    ck_assert(val_type(v) == TYPE_INT);
-
-    et->sum += val_get_int(v);
+    if (val_type(v) == TYPE_NIL) {
+        // ignore
+    }
+    else if (val_type(v) == TYPE_INT) {
+        et->sum += val_get_int(v);
+    }
+    else {
+        ck_abort_msg("type other than NIL/VOID in debug callback");
+    }
 }
 
 START_TEST(test_eval_01) {
@@ -29,12 +35,17 @@ START_TEST(test_eval_01) {
                         OP_DEBUGI, 0x12, 0x34, 0x56, 0x78, 
                         OP_NOOP, 
                         OP_DEBUGI, 0xC0, 0x00, 0x00, 0x00, 
-                        OP_NOOP, 
+                        OP_ARGS_LOCALS, 0x00, 0x02,
+                        OP_DEBUGR, 0x00,
+                        OP_LOAD_INT, 0x01, 0x00, 0x00, 0x00, 0x02,
+                        OP_DEBUGR, 0x01,
                         OP_HALT};
 
     eval_exec(ex, code);
 
-    ck_assert(et.sum == 0x785634D2);
+    printf("debug sum: 0x%08X\n", et.sum);
+    ck_assert_msg(et.sum == 0x7A5634D2, 
+        "unexpected sum of debug callback values");
 
     eval_free_ctx(ex); 
 }

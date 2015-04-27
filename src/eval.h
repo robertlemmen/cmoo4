@@ -16,12 +16,12 @@
  * | intermediate0  | <- SP
  * | local0         |
  * | argument1      |
- * | argument0      | 
+ * | argument0      | <- FP
  * +----------------+
- * | return address | <- FP
+ * | return address 
  * | previous FP    |
  * | ...            |
- *
+ 
  * In this case the current method has been called with two arguments, and has
  * reserved one local variable (at FP[2]). the intermediate value has been 
  * created with e.g. PUSH. Note that the arguments, locals and intermediate 
@@ -40,7 +40,7 @@
  * | argument1      |
  * | argument0      | <- FP
  * +----------------+
- * | return address |
+ * | return address | 
  * | previous FP    |
  * | ...            |
  * 
@@ -71,7 +71,7 @@
  * | argument1      |
  * | argument0      | <- FP
  * +----------------+
- * | return address |
+ * | return address | 
  * | previous FP    |
  * | ...            |
  * 

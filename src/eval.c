@@ -32,6 +32,9 @@ struct eval_ctx* eval_new_ctx(void) {
     ret->stack_top = ret->stack 
         + sizeof(union stack_element) * INITIAL_STACK_SIZE;
     ret->fp = ret->stack;
+    // XXX temporary clutch for testing, need proper initialization of 
+    // stack instead
+    ret->fp++;
     ret->sp = ret->stack;
     ret->callback = NULL;
     return ret;
@@ -89,81 +92,152 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
     printf(",---------------------------------,\n");
     DISPATCH();
     // some vars we need below, can't be declared after label...
-    int32_t *msg;
     while(1) {
-        do_noop:
+        do_noop: {
             printf("| NOOP                            |\n");
             DISPATCH();
-        do_halt:
-            // XXX this should really be HALT
+        }
+        do_halt: {
             printf("| HALT                            |\n");
             printf("'---------------------------------'\n");
             return;
             DISPATCH();
-        do_debugi:
-            // XXX decode argument and pass in
-            msg = (int32_t*)ip;
-            printf("| DEBUGI 0x%08X               |\n", *msg);
-            if (ctx->callback) {
-                ctx->callback(val_make_int(*msg), ctx->cb_arg);
-            }
+        }
+        do_debugi: {
+            int32_t msg = *((int32_t*)ip);
             ip += 4;
+            printf("| DEBUGI 0x%08X               |\n", msg);
+            if (ctx->callback) {
+                ctx->callback(val_make_int(msg), ctx->cb_arg);
+            }
             DISPATCH();
-        do_debugr:
+        }
+        do_debugr: {
+            uint8_t msg_r = *((uint8_t*)ip);
+            ip += 1;
+            if (&ctx->fp[msg_r] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            printf("| DEBUGR r0x%02X                    |\n", msg_r);
+            if (ctx->callback) {
+                ctx->callback(ctx->fp[msg_r].val, ctx->cb_arg);
+            }
             DISPATCH();
-        do_mov:
+        }
+        do_mov: {
             DISPATCH();
-        do_push:
+        }
+        do_push: {
             DISPATCH();
-        do_pop:
+        }
+        do_pop: {
             DISPATCH();
-        do_call:
+        }
+        do_call: {
             DISPATCH();
-        do_return:
+        }
+        do_return: {
             DISPATCH();
-        do_args_locals:
+        }
+        do_args_locals: {
+            uint8_t nargs = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t nlocals = *((uint8_t*)ip);
+            ip += 1;
+            printf("| ARGS_LOCALS 0x%02X 0x%02X           |\n", nargs, nlocals);
+            if (ctx->sp != &ctx->fp[nargs - 1]) {
+                // XXX raise
+                printf("!! invalid number of arguments\n");
+            }
+            // XXX needs to check and grow stack
+            for (int i = 0; i < nlocals; i++) {
+                val_init(&ctx->sp[i + 1].val);
+            }
+            ctx->sp += nlocals;
             DISPATCH();
-        do_clear:
+        }
+        do_clear: {
+            uint8_t reg = *((uint8_t*)ip);
+            ip += 1;
+            printf("| CLEAR r0x%02X                     |\n", reg);
+            if (&ctx->fp[reg] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            val_clear(&ctx->fp[reg].val);
             DISPATCH();
-        do_true:
+        }
+        do_true: {
             DISPATCH();
-        do_load_int:
+        }
+        do_load_int: {
+            uint8_t reg = *((uint8_t*)ip);
+            ip += 1;
+            int32_t nval = *((int32_t*)ip);
+            ip += 4;
+            printf("| LOAD_INT r0x%02X <- 0x%08X    |\n", reg, nval);
+            if (&ctx->fp[reg] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            val_clear(&ctx->fp[reg].val);
+            ctx->fp[reg].val = val_make_int(nval);
             DISPATCH();
-        do_load_float:
+        }
+        do_load_float: {
             DISPATCH();
-        do_type:
+        }
+        do_type: {
             DISPATCH();
-        do_logical_and:
+        }
+        do_logical_and: {
             DISPATCH();
-        do_logical_or:
+        }
+        do_logical_or: {
             DISPATCH();
-        do_eq:
+        }
+        do_eq: {
             DISPATCH();
-        do_lq:
+        }
+        do_lq: {
             DISPATCH();
-        do_lt:
+        }
+        do_lt: {
             DISPATCH();
-        do_add:
+        }
+        do_add: {
             DISPATCH();
-        do_sub:
+        }
+        do_sub: {
             DISPATCH();
-        do_mul:
+        }
+        do_mul: {
             DISPATCH();
-        do_div:
+        }
+        do_div: {
             DISPATCH();
-        do_mod:
+        }
+        do_mod: {
             DISPATCH();
-        do_jump:
+        }
+        do_jump: {
             DISPATCH();
-        do_jump_if:
+        }
+        do_jump_if: {
             DISPATCH();
-        do_jump_eq:
+        }
+        do_jump_eq: {
             DISPATCH();
-        do_jump_ne:
+        }
+        do_jump_ne: {
             DISPATCH();
-        do_jump_le:
+        }
+        do_jump_le: {
             DISPATCH();
-        do_jump_lt:
+        }
+        do_jump_lt: {
             DISPATCH();
+        }
     }
 }

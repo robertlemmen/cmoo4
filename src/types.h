@@ -38,7 +38,8 @@ val val_make_float(float i);
 /* sets the value pointed to to NIL and runs cleanups for non-immediates
  * as required */
 void val_clear(val *v);
-
+/* also set to NIL, but performs no cleanups */
+void val_init(val *v);
 /* get the value assuming that the type is correct */
 bool val_get_bool(val v);
 int val_get_int(val v);

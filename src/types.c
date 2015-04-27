@@ -29,7 +29,12 @@ val val_make_float(float i) {
 }
 
 void val_clear(val *v) {
-    // XXX
+    // XXX cleanup if non-immediate type
+    *v = 0;
+}
+
+void val_init(val *v) {
+    *v = 0;
 }
 
 bool val_get_bool(val v) {
