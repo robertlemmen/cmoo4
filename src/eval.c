@@ -73,7 +73,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         &&do_logical_and,
         &&do_logical_or,
         &&do_eq,
-        &&do_lq,
+        &&do_le,
         &&do_lt,
         &&do_add,
         &&do_sub,
@@ -241,7 +241,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         do_eq: {
             DISPATCH();
         }
-        do_lq: {
+        do_le: {
             DISPATCH();
         }
         do_lt: {

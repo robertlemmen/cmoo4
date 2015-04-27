@@ -107,7 +107,7 @@
 #define OP_LOGICAL_AND      15 // reg8:dst <- logical_and(reg8:src1, reg8:src2)
 #define OP_LOGICAL_OR       16 // reg8:dst <- logical_or(reg8:src1, reg8:src2)
 #define OP_EQ               17 // reg8:dst <- eq(reg8:src1, reg8:src2)
-#define OP_LQ               18 // reg8:dst <- lq(reg8:src1, reg8:src2)
+#define OP_LE               18 // reg8:dst <- le(reg8:src1, reg8:src2)
 #define OP_LT               19 // reg8:dst <- lt(reg8:src1, reg8:src2)
 #define OP_ADD              20 // reg8:dst <- reg8:src1 + reg8:src2
 #define OP_SUB              21 // reg8:dst <- reg8:src1 - reg8:src2
