@@ -79,6 +79,11 @@
  * declaration and the arguments, or local variables. But if you do use local
  * variables then of course their contents will be undefined after the return.
  *
+ * Also note that if you store your callee objref, method name and arguments
+ * in locals, then after the callee returned these are the last members on the
+ * stack, and you may have shrunk your args_locals guarantees, it is therefore
+ * recommended to use the last locals on your stack for this.
+ *
  * Also note that in a method with not arguments and locals, FP is initially 
  * beyond SP!
  *

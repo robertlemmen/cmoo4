@@ -1,0 +1,17 @@
+C M O O   T O D O
+=================
+
+next main jobs
+--------------
+- finish current opcodes minus strings, floats, call, return, push, pop
+- push/pop
+- floats
+- strings
+- call/return, requires stub object stuff
+- getglobal/setglobal
+- task system that build on top of eval and suspends evaluation
+
+small fry
+---------
+- update doc license to gpl3
+- document vm evaluator and type system

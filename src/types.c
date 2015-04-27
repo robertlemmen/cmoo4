@@ -15,7 +15,7 @@ val val_make_bool(bool i) {
 }
 
 val val_make_int(int i) {
-    
+    // XXX wouldn't it be quicker to just use the top 4 bytes? same for float and bool
     return ((int64_t)i << 4) | TYPE_INT;
 }
 
