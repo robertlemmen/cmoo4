@@ -6,4 +6,5 @@ development.pdf: development.tex
 clean:
 	@echo "Cleaning..."
 	@rm -f development.toc development.aux development.log \
-		development.ind development.idx development.out
+		development.ind development.idx development.out \
+		development.pdf
