@@ -46,4 +46,6 @@ int val_get_int(val v);
 float val_get_float(val v);
 // XXX more getters
 
+// XXX way to increment refcount when copying
+
 #endif /* TYPES_H */

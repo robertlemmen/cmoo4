@@ -15,11 +15,14 @@ void eval_debug_callback(val v, void *a) {
     if (val_type(v) == TYPE_NIL) {
         // ignore
     }
+    else if (val_type(v) == TYPE_BOOL) {
+        et->sum += val_get_bool(v) ? 42 : 23;
+    }
     else if (val_type(v) == TYPE_INT) {
         et->sum += val_get_int(v);
     }
     else {
-        ck_abort_msg("type other than NIL/VOID in debug callback");
+        ck_abort_msg("type other than BOOL/NIL/VOID in debug callback");
     }
 }
 
@@ -35,16 +38,22 @@ START_TEST(test_eval_01) {
                         OP_DEBUGI, 0x12, 0x34, 0x56, 0x78, 
                         OP_NOOP, 
                         OP_DEBUGI, 0xC0, 0x00, 0x00, 0x00, 
-                        OP_ARGS_LOCALS, 0x00, 0x02,
+                        OP_ARGS_LOCALS, 0x00, 0x03,
                         OP_DEBUGR, 0x00,
                         OP_LOAD_INT, 0x01, 0x00, 0x00, 0x00, 0x02,
                         OP_DEBUGR, 0x01,
+                        OP_TYPE, 0x00, 0x01,
+                        OP_DEBUGR, 0x00,
+                        OP_TRUE, 0x00, 
+                        OP_DEBUGR, 0x00,
+                        OP_MOV, 0x02, 0x01,
+                        OP_DEBUGR, 0x02,
                         OP_HALT};
 
     eval_exec(ex, code);
 
-    printf("debug sum: 0x%08X\n", et.sum);
-    ck_assert_msg(et.sum == 0x7A5634D2, 
+    printf("debug sum: 0x%08lX\n", et.sum);
+    ck_assert_msg(et.sum == 0x7C5634FE, 
         "unexpected sum of debug callback values");
 
     eval_free_ctx(ex); 

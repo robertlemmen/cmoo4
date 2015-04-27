@@ -53,6 +53,7 @@ void eval_free_ctx(struct eval_ctx *ctx) {
 }
 
 void eval_exec(struct eval_ctx *ctx, opcode *code) {
+    // XXX we probably want to cache sp/fp/ip in register variables
     void* dispatch_table[] = {
         &&do_noop,
         &&do_halt,
@@ -115,17 +116,33 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         do_debugr: {
             uint8_t msg_r = *((uint8_t*)ip);
             ip += 1;
+            printf("| DEBUGR r0x%02X                    |\n", msg_r);
             if (&ctx->fp[msg_r] > ctx->sp) {
                 // XXX raise
                 printf("!! access to reg outside stack\n");
             }
-            printf("| DEBUGR r0x%02X                    |\n", msg_r);
             if (ctx->callback) {
                 ctx->callback(ctx->fp[msg_r].val, ctx->cb_arg);
             }
             DISPATCH();
         }
         do_mov: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src = *((uint8_t*)ip);
+            ip += 1;
+            printf("| MOV r0x%02X <- r0x%02X              |\n", dst, src);
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            val_clear(&ctx->fp[dst].val);
+            ctx->fp[dst].val = ctx->fp[src].val;
+            // XXX need to increment refcount for non-immediates
             DISPATCH();
         }
         do_push: {
@@ -169,6 +186,15 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             DISPATCH();
         }
         do_true: {
+            uint8_t reg = *((uint8_t*)ip);
+            ip += 1;
+            printf("| TRUE r0x%02X <- TRUE              |\n", reg);
+            if (&ctx->fp[reg] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            val_clear(&ctx->fp[reg].val);
+            ctx->fp[reg].val = val_make_bool(true);
             DISPATCH();
         }
         do_load_int: {
@@ -189,6 +215,21 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             DISPATCH();
         }
         do_type: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src = *((uint8_t*)ip);
+            ip += 1;
+            printf("| TYPE r0x%02X <- r0x%02X             |\n", dst, src);
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            val_clear(&ctx->fp[dst].val);
+            ctx->fp[dst].val = val_make_int(val_type(ctx->fp[src].val));
             DISPATCH();
         }
         do_logical_and: {
