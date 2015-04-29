@@ -72,6 +72,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         &&do_type,
         &&do_logical_and,
         &&do_logical_or,
+        &&do_logical_not,
         &&do_eq,
         &&do_le,
         &&do_lt,
@@ -90,24 +91,24 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
     #define DISPATCH() goto *dispatch_table[*ip++]
 
     opcode *ip = code;
-    printf(",---------------------------------,\n");
+    printf(",----------------------------------,\n");
     DISPATCH();
     // some vars we need below, can't be declared after label...
     while(1) {
         do_noop: {
-            printf("| NOOP                            |\n");
+            printf("| NOOP                             |\n");
             DISPATCH();
         }
         do_halt: {
-            printf("| HALT                            |\n");
-            printf("'---------------------------------'\n");
+            printf("| HALT                             |\n");
+            printf("'----------------------------------'\n");
             return;
             DISPATCH();
         }
         do_debugi: {
             int32_t msg = *((int32_t*)ip);
             ip += 4;
-            printf("| DEBUGI 0x%08X               |\n", msg);
+            printf("| DEBUGI 0x%08X                |\n", msg);
             if (ctx->callback) {
                 ctx->callback(val_make_int(msg), ctx->cb_arg);
             }
@@ -116,7 +117,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         do_debugr: {
             uint8_t msg_r = *((uint8_t*)ip);
             ip += 1;
-            printf("| DEBUGR r0x%02X                    |\n", msg_r);
+            printf("| DEBUGR r0x%02X                     |\n", msg_r);
             if (&ctx->fp[msg_r] > ctx->sp) {
                 // XXX raise
                 printf("!! access to reg outside stack\n");
@@ -131,7 +132,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             ip += 1;
             uint8_t src = *((uint8_t*)ip);
             ip += 1;
-            printf("| MOV r0x%02X <- r0x%02X              |\n", dst, src);
+            printf("| MOV r0x%02X <- r0x%02X               |\n", dst, src);
             if (&ctx->fp[dst] > ctx->sp) {
                 // XXX raise
                 printf("!! access to reg outside stack\n");
@@ -162,7 +163,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             ip += 1;
             uint8_t nlocals = *((uint8_t*)ip);
             ip += 1;
-            printf("| ARGS_LOCALS 0x%02X 0x%02X           |\n", nargs, nlocals);
+            printf("| ARGS_LOCALS 0x%02X 0x%02X            |\n", nargs, nlocals);
             if (ctx->sp != &ctx->fp[nargs - 1]) {
                 // XXX raise
                 printf("!! invalid number of arguments\n");
@@ -177,7 +178,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         do_clear: {
             uint8_t reg = *((uint8_t*)ip);
             ip += 1;
-            printf("| CLEAR r0x%02X                     |\n", reg);
+            printf("| CLEAR r0x%02X                      |\n", reg);
             if (&ctx->fp[reg] > ctx->sp) {
                 // XXX raise
                 printf("!! access to reg outside stack\n");
@@ -188,7 +189,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         do_true: {
             uint8_t reg = *((uint8_t*)ip);
             ip += 1;
-            printf("| TRUE r0x%02X <- TRUE              |\n", reg);
+            printf("| TRUE r0x%02X <- TRUE               |\n", reg);
             if (&ctx->fp[reg] > ctx->sp) {
                 // XXX raise
                 printf("!! access to reg outside stack\n");
@@ -202,7 +203,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             ip += 1;
             int32_t nval = *((int32_t*)ip);
             ip += 4;
-            printf("| LOAD_INT r0x%02X <- 0x%08X    |\n", reg, nval);
+            printf("| LOAD_INT r0x%02X <- 0x%08X     |\n", reg, nval);
             if (&ctx->fp[reg] > ctx->sp) {
                 // XXX raise
                 printf("!! access to reg outside stack\n");
@@ -219,7 +220,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             ip += 1;
             uint8_t src = *((uint8_t*)ip);
             ip += 1;
-            printf("| TYPE r0x%02X <- r0x%02X             |\n", dst, src);
+            printf("| TYPE r0x%02X <- r0x%02X              |\n", dst, src);
             if (&ctx->fp[dst] > ctx->sp) {
                 // XXX raise
                 printf("!! access to reg outside stack\n");
@@ -233,9 +234,97 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             DISPATCH();
         }
         do_logical_and: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_a = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_b = *((uint8_t*)ip);
+            ip += 1;
+            printf("| LOGICAL_AND r0x%02X <- r0x%02X r0x%02X |\n", dst, src_a, src_b);
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_a] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_b] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (val_type(ctx->fp[src_a].val) != TYPE_BOOL) {
+                // XXX raise
+                printf("!! parameter type mismatch\n");
+            }
+            if (val_type(ctx->fp[src_b].val) != TYPE_BOOL) {
+                // XXX raise
+                printf("!! parameter type mismatch\n");
+            }
+            val_clear(&ctx->fp[dst].val);
+            ctx->fp[dst].val = val_make_bool(
+                   val_get_bool(ctx->fp[src_a].val) 
+                && val_get_bool(ctx->fp[src_b].val) 
+            );
             DISPATCH();
         }
         do_logical_or: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_a = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_b = *((uint8_t*)ip);
+            ip += 1;
+            printf("| LOGICAL_OR r0x%02X <- r0x%02X r0x%02X  |\n", dst, src_a, src_b);
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_a] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_b] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (val_type(ctx->fp[src_a].val) != TYPE_BOOL) {
+                // XXX raise
+                printf("!! parameter type mismatch\n");
+            }
+            if (val_type(ctx->fp[src_b].val) != TYPE_BOOL) {
+                // XXX raise
+                printf("!! parameter type mismatch\n");
+            }
+            val_clear(&ctx->fp[dst].val);
+            ctx->fp[dst].val = val_make_bool(
+                   val_get_bool(ctx->fp[src_a].val) 
+                || val_get_bool(ctx->fp[src_b].val) 
+            );
+            DISPATCH();
+        }
+        do_logical_not: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src = *((uint8_t*)ip);
+            ip += 1;
+            printf("| LOGICAL_NOT r0x%02X <- r0x%02X       |\n", dst, src);
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (val_type(ctx->fp[src].val) != TYPE_BOOL) {
+                // XXX raise
+                printf("!! parameter type mismatch\n");
+            }
+            val_clear(&ctx->fp[dst].val);
+            ctx->fp[dst].val = val_make_bool(
+                ! val_get_bool(ctx->fp[src].val) 
+            );
             DISPATCH();
         }
         do_eq: {

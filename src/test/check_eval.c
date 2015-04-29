@@ -5,33 +5,37 @@
 
 #include "eval.h"
 
-struct eval_trace {
-    long sum;
-};
-
+// XXX improve debug function to just create concatenated string, much better!
 void eval_debug_callback(val v, void *a) {
-    struct eval_trace *et = (struct eval_trace*)a;
+    char *res = (char*)a;
 
     if (val_type(v) == TYPE_NIL) {
-        // ignore
+        strcat(res, "N");
     }
     else if (val_type(v) == TYPE_BOOL) {
-        et->sum += val_get_bool(v) ? 42 : 23;
+        if (val_get_bool(v)) {
+            strcat(res, "T");
+        }
+        else {
+            strcat(res, "F");
+        }
     }
     else if (val_type(v) == TYPE_INT) {
-        et->sum += val_get_int(v);
+        char buffer[20];
+        sprintf(buffer, "I%i", val_get_int(v));
+        strcat(res, buffer);
     }
     else {
-        ck_abort_msg("type other than BOOL/NIL/VOID in debug callback");
+        ck_abort_msg("unexpected type in debug callback");
     }
 }
 
 START_TEST(test_eval_01) {
     struct eval_ctx *ex = eval_new_ctx();
  
-    struct eval_trace et;
-    et.sum = 0;
-    eval_set_dbg_handler(ex, &eval_debug_callback, &et);
+    char trace[4096];
+    trace[0] = '\0';
+    eval_set_dbg_handler(ex, &eval_debug_callback, trace);
   
     opcode code[] = {   OP_NOOP, 
                         OP_NOOP, 
@@ -52,9 +56,50 @@ START_TEST(test_eval_01) {
 
     eval_exec(ex, code);
 
-    printf("debug sum: 0x%08lX\n", et.sum);
-    ck_assert_msg(et.sum == 0x7C5634FE, 
-        "unexpected sum of debug callback values");
+    printf("debug trace: %s\n", trace);
+    ck_assert_msg(strcmp(trace, "I2018915346I192NI33554432I2TI33554432") == 0,
+        "unexpected debug callback trace");
+
+    eval_free_ctx(ex); 
+}
+END_TEST
+
+START_TEST(test_eval_02) {
+    struct eval_ctx *ex = eval_new_ctx();
+ 
+    char trace[4096];
+    trace[0] = '\0';
+    eval_set_dbg_handler(ex, &eval_debug_callback, trace);
+  
+    opcode code[] = {   OP_NOOP, 
+                        OP_ARGS_LOCALS, 0x00, 0x0A,
+                        OP_TRUE, 0x01,
+                        OP_LOGICAL_NOT, 0x00, 0x01,
+                        OP_DEBUGR, 0x00,
+                        OP_DEBUGR, 0x01,
+                        OP_LOGICAL_OR, 0x02, 0x00, 0x01,
+                        OP_DEBUGR, 0x02,
+                        OP_LOGICAL_OR, 0x03, 0x01, 0x00,
+                        OP_DEBUGR, 0x03,
+                        OP_LOGICAL_OR, 0x04, 0x00, 0x00,
+                        OP_DEBUGR, 0x04,
+                        OP_LOGICAL_OR, 0x05, 0x01, 0x01,
+                        OP_DEBUGR, 0x05,
+                        OP_LOGICAL_AND, 0x06, 0x00, 0x01,
+                        OP_DEBUGR, 0x06,
+                        OP_LOGICAL_AND, 0x07, 0x01, 0x00,
+                        OP_DEBUGR, 0x07,
+                        OP_LOGICAL_AND, 0x08, 0x00, 0x00,
+                        OP_DEBUGR, 0x08,
+                        OP_LOGICAL_AND, 0x09, 0x01, 0x01,
+                        OP_DEBUGR, 0x09,
+                        OP_HALT};
+
+    eval_exec(ex, code);
+
+    printf("debug trace: %s\n", trace);
+    ck_assert_msg(strcmp(trace, "FTTTFTFFFT") == 0,
+        "unexpected debug callback trace");
 
     eval_free_ctx(ex); 
 }
@@ -65,6 +110,7 @@ TCase* make_eval_checks(void) {
 
     tc_eval = tcase_create("Eval");
     tcase_add_test(tc_eval, test_eval_01);
+    tcase_add_test(tc_eval, test_eval_02);
 
     return tc_eval;
 }

@@ -4,7 +4,6 @@ C M O O   T O D O
 next main jobs
 --------------
 - finish current opcodes minus strings, floats, call, return, push, pop
-- logical xor, needed to make false value
 - push/pop
 - floats
 - strings
