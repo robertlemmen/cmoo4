@@ -337,12 +337,114 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             DISPATCH();
         }
         do_add: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_a = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_b = *((uint8_t*)ip);
+            ip += 1;
+            printf("| ADD r0x%02X <- r0x%02X r0x%02X         |\n", dst, src_a, src_b);
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_a] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_b] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (       val_type(ctx->fp[src_a].val) 
+                    != val_type(ctx->fp[src_b].val) ) {
+                printf("!! parameter type mismatch\n");
+            }
+            val_clear(&ctx->fp[dst].val);
+            if (val_type(ctx->fp[src_a].val) == TYPE_INT) {
+                ctx->fp[dst].val = val_make_int(
+                      val_get_int(ctx->fp[src_a].val)
+                    + val_get_int(ctx->fp[src_b].val)
+                );
+            }
+            else {
+                // XXX need case for float as well
+                printf("!! parameter type mismatch\n");
+            }
             DISPATCH();
         }
         do_sub: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_a = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_b = *((uint8_t*)ip);
+            ip += 1;
+            printf("| SUB r0x%02X <- r0x%02X r0x%02X         |\n", dst, src_a, src_b);
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_a] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_b] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (       val_type(ctx->fp[src_a].val) 
+                    != val_type(ctx->fp[src_b].val) ) {
+                printf("!! parameter type mismatch\n");
+            }
+            val_clear(&ctx->fp[dst].val);
+            if (val_type(ctx->fp[src_a].val) == TYPE_INT) {
+                ctx->fp[dst].val = val_make_int(
+                      val_get_int(ctx->fp[src_a].val)
+                    - val_get_int(ctx->fp[src_b].val)
+                );
+            }
+            else {
+                // XXX need case for float as well
+                printf("!! parameter type mismatch\n");
+            }
             DISPATCH();
         }
         do_mul: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_a = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_b = *((uint8_t*)ip);
+            ip += 1;
+            printf("| MUL r0x%02X <- r0x%02X r0x%02X         |\n", dst, src_a, src_b);
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_a] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_b] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (       val_type(ctx->fp[src_a].val) 
+                    != val_type(ctx->fp[src_b].val) ) {
+                printf("!! parameter type mismatch\n");
+            }
+            val_clear(&ctx->fp[dst].val);
+            if (val_type(ctx->fp[src_a].val) == TYPE_INT) {
+                ctx->fp[dst].val = val_make_int(
+                      val_get_int(ctx->fp[src_a].val)
+                    * val_get_int(ctx->fp[src_b].val)
+                );
+            }
+            else {
+                // XXX need case for float as well
+                printf("!! parameter type mismatch\n");
+            }
             DISPATCH();
         }
         do_div: {
