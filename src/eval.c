@@ -328,12 +328,118 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             DISPATCH();
         }
         do_eq: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_a = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_b = *((uint8_t*)ip);
+            ip += 1;
+            printf("| EQ r0x%02X <- r0x%02X r0x%02X          |\n", dst, src_a, src_b);
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_a] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_b] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            val_clear(&ctx->fp[dst].val);
+            bool result = false;
+            if (       val_type(ctx->fp[src_a].val) 
+                    != val_type(ctx->fp[src_b].val) ) {
+                // types differ
+                result = false;
+            }
+            else {
+                if (val_type(ctx->fp[src_a].val) == TYPE_NIL) {
+                    // nil always compares false, even to itself
+                    result = false;
+                }
+                else if (val_type(ctx->fp[src_a].val) == TYPE_INT) {
+                    result = val_get_int(ctx->fp[src_a].val) == val_get_int(ctx->fp[src_b].val);
+                }
+                else if (val_type(ctx->fp[src_a].val) == TYPE_BOOL) {
+                    result = val_get_bool(ctx->fp[src_a].val) == val_get_bool(ctx->fp[src_b].val);
+                }
+            }
+            // XXX more types
+            ctx->fp[dst].val = val_make_bool(result);
             DISPATCH();
         }
         do_le: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_a = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_b = *((uint8_t*)ip);
+            ip += 1;
+            printf("| LE r0x%02X <- r0x%02X r0x%02X          |\n", dst, src_a, src_b);
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_a] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_b] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (       val_type(ctx->fp[src_a].val) 
+                    != val_type(ctx->fp[src_b].val) ) {
+                printf("!! argument type mismatch\n");
+            }
+            val_clear(&ctx->fp[dst].val);
+            bool result = false;
+            if (val_type(ctx->fp[src_a].val) == TYPE_INT) {
+                result = val_get_int(ctx->fp[src_a].val) <= val_get_int(ctx->fp[src_b].val);
+            }
+            // XXX float/string
+            else {
+                printf("!! argument type mismatch\n");
+            }
+            ctx->fp[dst].val = val_make_bool(result);
             DISPATCH();
         }
         do_lt: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_a = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_b = *((uint8_t*)ip);
+            ip += 1;
+            printf("| LT r0x%02X <- r0x%02X r0x%02X          |\n", dst, src_a, src_b);
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_a] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_b] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (       val_type(ctx->fp[src_a].val) 
+                    != val_type(ctx->fp[src_b].val) ) {
+                printf("!! argument type mismatch\n");
+            }
+            val_clear(&ctx->fp[dst].val);
+            bool result = false;
+            if (val_type(ctx->fp[src_a].val) == TYPE_INT) {
+                result = val_get_int(ctx->fp[src_a].val) < val_get_int(ctx->fp[src_b].val);
+            }
+            // XXX float/string
+            else {
+                printf("!! argument type mismatch\n");
+            }
+            ctx->fp[dst].val = val_make_bool(result);
             DISPATCH();
         }
         do_add: {
