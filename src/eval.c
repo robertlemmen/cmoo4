@@ -503,12 +503,11 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
                     != val_type(ctx->fp[src_b].val) ) {
                 printf("!! parameter type mismatch\n");
             }
-            val_clear(&ctx->fp[dst].val);
             if (val_type(ctx->fp[src_a].val) == TYPE_INT) {
-                ctx->fp[dst].val = val_make_int(
-                      val_get_int(ctx->fp[src_a].val)
-                    - val_get_int(ctx->fp[src_b].val)
-                );
+                int result = val_get_int(ctx->fp[src_a].val)
+                    - val_get_int(ctx->fp[src_b].val);
+                val_clear(&ctx->fp[dst].val);
+                ctx->fp[dst].val = val_make_int(result);
             }
             else {
                 // XXX need case for float as well
@@ -560,9 +559,26 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             DISPATCH();
         }
         do_jump: {
+            int32_t rel_addr = *((int32_t*)ip);
+            ip += 4;
+            printf("| JUMP %08i                    |\n", rel_addr);
+            ip += rel_addr;
             DISPATCH();
         }
         do_jump_if: {
+            uint8_t cond = *((uint8_t*)ip);
+            ip += 1;
+            int32_t rel_addr = *((int32_t*)ip);
+            ip += 4;
+            printf("| JUMP_IF r0x%02X %08i           |\n", cond, rel_addr);
+            if (&ctx->fp[cond] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (       (val_type(ctx->fp[cond].val) == TYPE_BOOL) 
+                    && (val_get_bool(ctx->fp[cond].val)) ) {
+                ip += rel_addr;
+            }
             DISPATCH();
         }
         do_jump_eq: {

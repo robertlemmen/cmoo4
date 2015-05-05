@@ -218,6 +218,42 @@ START_TEST(test_eval_05) {
 }
 END_TEST
 
+START_TEST(test_eval_06) {
+    struct eval_ctx *ex = eval_new_ctx();
+
+    char trace[4096];
+    trace[0] = '\0';
+    eval_set_dbg_handler(ex, &eval_debug_callback, trace);
+  
+    opcode code[] = {   OP_NOOP, 
+                        OP_ARGS_LOCALS, 0x00, 0x04,
+                        OP_LOAD_INT, 0x00, 0x06, 0x00, 0x00, 0x00,
+                        OP_LOAD_INT, 0x01, 0x00, 0x00, 0x00, 0x00,
+                        OP_LOAD_INT, 0x03, 0x01, 0x00, 0x00, 0x00,
+                        OP_NOOP,
+                        OP_NOOP,
+                        OP_NOOP,
+                        OP_NOOP,
+                        OP_NOOP,
+                        OP_NOOP,
+                        OP_SUB, 0x00, 0x00, 0x03,
+                        OP_DEBUGR, 0x00,
+                        OP_EQ, 0x02, 0x00, 0x01,
+                        OP_DEBUGR, 0x02,
+                        OP_JUMP_IF, 0x02, 0x05, 0x00, 0x00, 0x00,
+                        OP_JUMP, 0xE8, 0xFF, 0xFF, 0xFF,
+                        OP_HALT};
+
+    eval_exec(ex, code);
+
+    printf("debug trace: %s\n", trace);
+    ck_assert_msg(strcmp(trace, "I5FI4FI3FI2FI1FI0T") == 0,
+        "unexpected debug callback trace");
+
+    eval_free_ctx(ex); 
+}
+END_TEST
+
 TCase* make_eval_checks(void) {
     TCase *tc_eval;
 
@@ -227,6 +263,7 @@ TCase* make_eval_checks(void) {
     tcase_add_test(tc_eval, test_eval_03);
     tcase_add_test(tc_eval, test_eval_04);
     tcase_add_test(tc_eval, test_eval_05);
+    tcase_add_test(tc_eval, test_eval_06);
 
     return tc_eval;
 }

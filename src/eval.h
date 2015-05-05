@@ -121,11 +121,11 @@
 #define OP_DIV              24 // reg8:dst <- reg8:src1 / reg8:src2
 #define OP_MOD              25 // reg8:dst <- reg8:src1 % reg8:src2
 #define OP_JUMP             26 // IP += int32:offset
-#define OP_JUMP_IF          27 // IP += int32:offset if reg8:src is TRUE
-#define OP_JUMP_EQ          28 // IP += int32:offset if eq(reg8:src1, reg8:src2)
-#define OP_JUMP_NE          29 // IP += int32:offset if ne(reg8:src1, reg8:src2)
-#define OP_JUMP_LE          30 // IP += int32:offset if le(reg8:src1, reg8:src2)
-#define OP_JUMP_LT          31 // IP += int32:offset if lt(reg8:src1, reg8:src2)
+#define OP_JUMP_IF          27 // if reg8:src is TRUE then IP += int32:offset
+#define OP_JUMP_EQ          28 // if eq(reg8:src1, reg8:src2) then IP += int32:offset
+#define OP_JUMP_NE          29 // if ne(reg8:src1, reg8:src2) then IP += int32:offset
+#define OP_JUMP_LE          30 // if le(reg8:src1, reg8:src2 then IP += int32:offset
+#define OP_JUMP_LT          31 // if lt(reg8:src1, reg8:src2) then IP += int32:offset
 // XXX more ops
 
 typedef uint8_t opcode;
