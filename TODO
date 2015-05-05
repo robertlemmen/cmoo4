@@ -7,8 +7,9 @@ next main jobs
 - push/pop
 - floats
 - strings
+- inc/dec calls for ints
 - call/return, requires stub object stuff
-- getglobal/setglobal
+- getglobal/setglobal subs
 - task system that build on top of eval and suspends evaluation
 - networking and so forth, towards single-threaded, stub db version
 - then hashes/arrays

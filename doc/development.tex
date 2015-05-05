@@ -69,6 +69,139 @@ CMOO. If not, see $<$http://www.gnu.org/licenses/$>$.
 
 \section{The Virtual Machine}\label{sec:virtual_machine}
 
+\subsection{Types}\label{sec:types}
+
+The language in CMOO is dynamically typed, in other words types are associated with values rather than with variables. So the same variable can contain a number at some point and a string a little bit later. The VM differentiates between immediate types, which can be represented in their entirety in a single stack cell, and non-immediates which require some heap storage. An example for an immediate would be a integer, a string would be a non-immediate. The follwing types are supported:
+
+% XXX descriptions of these
+\begin{description}
+\item[NIL]
+\item[BOOL]
+\item[INT]
+\item[FLOAT]
+\item[STRING]
+\item[OBJREF]
+\end{description}
+
+Interally all of these are represented as a 64 bit cell that contains a type tag as well as the value in case of an immediate, or a pointer to teh actual object in the case of a non-immediate. Since all pointers have the lowest bits set to 0 anyway, these are used for type tagging.
+
+\subsection{Registers and Stack}\label{sec:stack}
+
+The virtual machine is fairly simple: it has registers that hold the address of the current instruction (IP), a pointer to the top of the stack (SP), and a frame pointer (FP). Unlike a ``pure'' stack VM, elements on the stack can be addressed by position relative to FP, which makes it a little bit like a register based VM. A method can reserve space on the stack for this use, which we will call ``locals''. Note that a stack cell can contain values accessible by the code, but also VM-internal information like instruction addresses or frame pointers. These are always hidden from the code executed by the VM.
+
+So in a method call with two arguments passed in, FP will point to the first argument, and SP to the last element on the stack, the second argument. In the visualisation below, the horizontal lines show the boundaries of the call frames on the stack:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{3cm}|p{3cm}}
+argument 1 & $\leftarrow$ SP \\
+argument 0 & $\leftarrow$ FP \\
+\cline{1-1}
+\ldots & \\
+\end{tabular}
+\end{table}
+
+Note that in a method with only one argument, SP and FP will initially point to the same stack element, and in a method with nor aguments FP will initially point to an element beyond the stack! The number of arguments provided can be calculated using SP and FP, the method code is expected to assert that this is the expected number first. Additionally, the method can reserve a number of ``locals'' on the stack for use, these are initialized to NIL. Since most methods will do both, this is done by a combined opcode \verb|ARGS_LOCALS|. So assuming the two arguments, and one local, the stack would then look as follows:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{3cm}|p{3cm}}
+local 0 & $\leftarrow$ SP \\
+argument 1 \\ 
+argument 0 & $\leftarrow$ FP \\
+\cline{1-1}
+\ldots & \\
+\end{tabular}
+\end{table}
+
+The stack can also be used in a more dynamic fashion using \verb|PUSH| and \verb|POP|, and even these values can be addressed relative to FP, although that is typically difficult to realise in code. These values are called ``intermediates''. So after a \verb|PUSH|, the stack would look as follows:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{3cm}|p{3cm}}
+intermediate 0 & $\leftarrow$ SP \\
+local 0    \\    
+argument 1 \\
+argument 0 & $\leftarrow$ FP \\ 
+\cline{1-1}
+\ldots & \\
+\end{tabular}
+\end{table}
+
+When calling another method, the caller has to pu the callee objref, the callee method name and all arguments on the stack. For example if we were to do that with \verb|PUSH|, the stack would look like this just before the call:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{3cm}|p{3cm}}
+argument 0 & $\leftarrow$ SP \\
+method name \\
+callee objref \\
+intermediate 0 \\
+local 0    \\    
+argument 1 \\
+argument 0 & $\leftarrow$ FP \\ 
+\cline{1-1}
+\ldots & \\
+\end{tabular}
+\end{table}
+
+The caller will then issue a \verb|CALL| opcoode supplying the number of arguments, which will locate the object and method, and overwrite the corresponding slots with information it needs for the return: the IP when called and the previous FP:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{3cm}|p{3cm}}
+argument 0 & $\leftarrow$ SP, FP \\
+\cline{1-1}
+return address \\
+previous FP \\
+intermediate 0 \\
+local 0    \\    
+argument 1 \\
+argument 0 \\
+\cline{1-1}
+\ldots & \\
+\end{tabular}
+\end{table}
+
+% XXX returning 
+
+\subsection{Opcodes}\label{sec:opcodes}
+
+the VM machine code is a sequence on one-octet opcodes followed by a variable number and length of arguments. Typical types of the arguments are unsigned 8bit values that denote a local relative to FP, signed 4-byte integers that are used e.g. as relative addresses, and serializations of actual values.
+
+\subsubsection{NOOP}
+\subsubsection{HALT}
+\subsubsection{DEBUGI}
+\subsubsection{DEBUGR}
+\subsubsection{MOV}
+\subsubsection{PUSH}
+\subsubsection{POP}
+\subsubsection{CALL}
+\subsubsection{RETURN}
+\subsubsection{ARGS\_LOCALS}
+\subsubsection{CLEAR}
+\subsubsection{TRUE}
+\subsubsection{LOAD\_INT}
+\subsubsection{LOAD\_FLOAT}
+\subsubsection{TYPE}
+\subsubsection{LOGICAL\_AND}
+\subsubsection{LOGICAL\_OR}
+\subsubsection{LOGICAL\_NOT}
+\subsubsection{EQ}
+\subsubsection{LE}
+\subsubsection{LT}
+\subsubsection{ADD}
+\subsubsection{SUB}
+\subsubsection{MUL}
+\subsubsection{DIV}
+\subsubsection{MOD}
+\subsubsection{JUMP}
+\subsubsection{JUMP\_IF}
+\subsubsection{JUMP\_EQ}
+\subsubsection{JUMP\_NE}
+\subsubsection{JUMP\_LE}
+\subsubsection{JUMP\_LT}
+
 \section{Networking}\label{sec:networking}
 
 \section{Transaction Safety}\label{sec:transaction_safety}

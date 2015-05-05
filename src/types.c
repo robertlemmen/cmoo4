@@ -2,6 +2,13 @@
 
 #include <assert.h>
 
+/* XXX in the longer run we should change the type tagging scheme so that
+ * the lowest bits only indicate whether this is a non-immediate, and if 
+ * so some indication of type, or whether it is an immediate, in which case  * the other 32bits can contain the payload and we have extra low bits to
+ * further differentiate. this would allow us to have far more types, which
+ * would be good given that with hashes and arrays we will already run out
+ * of type bits */
+
 int val_type(val v) {
     return v & 0x7;;
 }
