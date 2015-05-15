@@ -1,8 +1,8 @@
 WARN=-Wall -Wshadow -Wpointer-arith -Wcast-qual \
 	-Wstrict-prototypes 
-CFLAGS=-g $(WARN) -std=c11
+CFLAGS=-g $(WARN) -std=c11 -pthread
 CINCFLAGS=
-LDFLAGS=
+LDFLAGS=-lev
 CC=gcc
 TARGET=cmoo
 SUBDIRS=test
