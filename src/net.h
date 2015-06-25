@@ -22,7 +22,9 @@ void net_start(struct net_ctx *ctx);
 void net_stop(struct net_ctx *ctx);
 
 void net_make_listener(struct net_ctx *ctx, unsigned int port, 
-    void (accept_callback)(struct net_socket *socket));
+    void (*error_callback)(int errnum),
+    void (*accept_callback)(struct net_ctx *ctx, struct net_socket *socket, 
+        void *cb_data), void *cb_data);
 void net_shutdown_listener(struct net_ctx *ctx, unsigned int port);
 
 #endif /* NET_H */
