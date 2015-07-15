@@ -5,6 +5,7 @@
 \usepackage{listings}
 \usepackage{longtable}
 \usepackage[linkcolor=blue, colorlinks=true]{hyperref}
+\usepackage{layout}
 
 \pdfinfo {            
 	/Title(The CMOO Development Manual)
@@ -42,6 +43,9 @@
 \end{center}
 \clearpage
 
+\layout
+\clearpage
+
 \thispagestyle{empty}
 ~\vspace{\stretch{1}}\\
 Copyrigth \copyright~2008 -- 2015 Robert Lemmen $<$robertle@semistable.com$>$
@@ -65,11 +69,27 @@ CMOO. If not, see $<$http://www.gnu.org/licenses/$>$.
 
 \section{Introduction}\label{sec:introduction}
 
+% XXX why are MOOs so cool? why so hard? our goal
+
 \section{Architecture}\label{sec:architecture}
 
-\section{The Virtual Machine}\label{sec:virtual_machine}
+\subsection{Fundamental Decisions}\label{sec:fundamental_decisions}
 
-\subsection{Types}\label{sec:types}
+% XXX basic decisions
+
+\subsection{High Level Module Design}\label{sec:hl_design}
+
+\begin{figure}[htb]
+\centering
+\input{design_hl.pdf_tex}
+\caption{High-Level Module Design}
+\end{figure}
+
+\section{Implementation Details}\label{sec:implementation_details}
+
+\subsection{The Virtual Machine}\label{sec:virtual_machine}
+
+\subsubsection{Types}\label{sec:types}
 
 The language in CMOO is dynamically typed, in other words types are associated with values rather than with variables. So the same variable can contain a number at some point and a string a little bit later. The VM differentiates between immediate types, which can be represented in their entirety in a single stack cell, and non-immediates which require some heap storage. An example for an immediate would be a integer, a string would be a non-immediate. The follwing types are supported:
 
@@ -85,7 +105,7 @@ The language in CMOO is dynamically typed, in other words types are associated w
 
 Interally all of these are represented as a 64 bit cell that contains a type tag as well as the value in case of an immediate, or a pointer to teh actual object in the case of a non-immediate. Since all pointers have the lowest bits set to 0 anyway, these are used for type tagging.
 
-\subsection{Registers and Stack}\label{sec:stack}
+\subsubsection{Registers and Stack}\label{sec:stack}
 
 The virtual machine is fairly simple: it has registers that hold the address of the current instruction (IP), a pointer to the top of the stack (SP), and a frame pointer (FP). Unlike a ``pure'' stack VM, elements on the stack can be addressed by position relative to FP, which makes it a little bit like a register based VM. A method can reserve space on the stack for this use, which we will call ``locals''. Note that a stack cell can contain values accessible by the code, but also VM-internal information like instruction addresses or frame pointers. These are always hidden from the code executed by the VM.
 
@@ -165,47 +185,47 @@ argument 0 \\
 
 % XXX returning 
 
-\subsection{Opcodes}\label{sec:opcodes}
+\subsubsection{Opcodes}\label{sec:opcodes}
 
 the VM machine code is a sequence on one-octet opcodes followed by a variable number and length of arguments. Typical types of the arguments are unsigned 8bit values that denote a local relative to FP, signed 4-byte integers that are used e.g. as relative addresses, and serializations of actual values.
 
-\subsubsection{NOOP}
-\subsubsection{HALT}
-\subsubsection{DEBUGI}
-\subsubsection{DEBUGR}
-\subsubsection{MOV}
-\subsubsection{PUSH}
-\subsubsection{POP}
-\subsubsection{CALL}
-\subsubsection{RETURN}
-\subsubsection{ARGS\_LOCALS}
-\subsubsection{CLEAR}
-\subsubsection{TRUE}
-\subsubsection{LOAD\_INT}
-\subsubsection{LOAD\_FLOAT}
-\subsubsection{TYPE}
-\subsubsection{LOGICAL\_AND}
-\subsubsection{LOGICAL\_OR}
-\subsubsection{LOGICAL\_NOT}
-\subsubsection{EQ}
-\subsubsection{LE}
-\subsubsection{LT}
-\subsubsection{ADD}
-\subsubsection{SUB}
-\subsubsection{MUL}
-\subsubsection{DIV}
-\subsubsection{MOD}
-\subsubsection{JUMP}
-\subsubsection{JUMP\_IF}
-\subsubsection{JUMP\_EQ}
-\subsubsection{JUMP\_NE}
-\subsubsection{JUMP\_LE}
-\subsubsection{JUMP\_LT}
+\paragraph{NOOP}
+\paragraph{HALT}
+\paragraph{DEBUGI}
+\paragraph{DEBUGR}
+\paragraph{MOV}
+\paragraph{PUSH}
+\paragraph{POP}
+\paragraph{CALL}
+\paragraph{RETURN}
+\paragraph{ARGS\_LOCALS}
+\paragraph{CLEAR}
+\paragraph{TRUE}
+\paragraph{LOAD\_INT}
+\paragraph{LOAD\_FLOAT}
+\paragraph{TYPE}
+\paragraph{LOGICAL\_AND}
+\paragraph{LOGICAL\_OR}
+\paragraph{LOGICAL\_NOT}
+\paragraph{EQ}
+\paragraph{LE}
+\paragraph{LT}
+\paragraph{ADD}
+\paragraph{SUB}
+\paragraph{MUL}
+\paragraph{DIV}
+\paragraph{MOD}
+\paragraph{JUMP}
+\paragraph{JUMP\_IF}
+\paragraph{JUMP\_EQ}
+\paragraph{JUMP\_NE}
+\paragraph{JUMP\_LE}
+\paragraph{JUMP\_LT}
 
-\section{Networking}\label{sec:networking}
+\subsection{Networking}\label{sec:networking}
 
-\section{Transaction Safety}\label{sec:transaction_safety}
+\subsection{Transaction Safety}\label{sec:transaction_safety}
 
-\section{Persistence}\label{sec:persistence}
+\subsection{Persistence}\label{sec:persistence}
 
 \end{document}
