@@ -1,6 +1,8 @@
 #ifndef NET_H
 #define NET_H
 
+#include <stddef.h>
+
 /* this module implements a networking subsystem that uses a thread
  * to handle accepting connections, reading and writing.
  *
@@ -26,5 +28,13 @@ void net_make_listener(struct net_ctx *ctx, unsigned int port,
     void (*accept_callback)(struct net_ctx *ctx, struct net_socket *socket, 
         void *cb_data), void *cb_data);
 void net_shutdown_listener(struct net_ctx *ctx, unsigned int port);
+
+void net_socket_init(struct net_socket *s, 
+    void (*read_callback)(void *buf, size_t size, void *cb_data),
+    void (*closed_callback)(void *cb_data),
+    void *cb_data);
+void net_socket_close(struct net_socket *s);
+void net_socket_free(struct net_socket *s);
+void net_socket_write(struct net_socket *s, void *buf, size_t size);
 
 #endif /* NET_H */
