@@ -1,3 +1,13 @@
 C M O O   R E A D M E
 =====================
 
+CMOO is an experimental MUD driver with the primary aim to allow parallel 
+processing of client interaction while still providing strong consistency
+to the logic running inside the driver.
+
+The code is in a very early stage of development, and does not actually do
+anything useful yet.
+
+I would love to discuss aything related to this topic, so do not hesitate
+to contact me: Robert Lemmen <robertle@semistable.com>
+
