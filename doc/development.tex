@@ -49,12 +49,9 @@ Copyrigth \copyright~2008 -- 2015 Robert Lemmen $<$robertle@semistable.com$>$
 
 This document is part of CMOO, and as such, this document is released under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
 
-CMOO is distributed in the hope that it will be useful, but {\em without and
-waranty}; without even the implied warranty of {\em merchantability} or {\em
-fitness for a particular purpose}.  See the GNU General Public License for more details.
+CMOO is distributed in the hope that it will be useful, but {\em without any waranty}; without even the implied warranty of {\em merchantability} or {\em fitness for a particular purpose}.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along with
-CMOO. If not, see $<$http://www.gnu.org/licenses/$>$.
+You should have received a copy of the GNU General Public License along with CMOO. If not, see $<$http://www.gnu.org/licenses/$>$.
 \cleardoublepage
 
 % table of contents
@@ -62,27 +59,43 @@ CMOO. If not, see $<$http://www.gnu.org/licenses/$>$.
 \cleardoublepage
 
 % content start
-\cleardoublepage
-
 \section{Introduction}\label{sec:introduction}
 
-% XXX why are MOOs so cool? why so hard? our goal
+\subsection{MOOs}
 
-\section{Architecture}\label{sec:architecture}
+% XXX definition, heavily steal from book, short history, why are they so cool (real virtual world)
+
+\subsection{The Problem}
+
+% XXX touches all interesting parts of computer engineering
+
+\subsection{Our Goal}
+
+% XXX fully content-agnostic, persistent, consistent, concurrent/parallel, vision: make it distributed
+
+\section{Design}\label{sec:architecture}
 
 \subsection{Fundamental Decisions}\label{sec:fundamental_decisions}
 
-% XXX basic decisions
+% XXX serializable consistency: valuable, but hard and limits scalability. consequence: interpreter may block, so interruptible tasks. interpreter may deadlock, so need to detect and roll back -> I/O
 
-\subsection{High Level Module Design}\label{sec:hl_design}
+% XXX VM as interpreter
+
+\subsection{High-Level Modules}\label{sec:hl_design}
 
 \begin{figure}[htb]
 \centering
 \input{design_hl.pdf_tex}
-\caption{High-Level Module Design}
+\caption{High-Level Modules}
 \end{figure}
 
 \section{Implementation Details}\label{sec:implementation_details}
+
+\subsection{Networking}\label{sec:networking}
+
+\subsection{Transactional I/O}\label{sec:transactional_io}
+
+\subsection{Task Management}\label{sec:task_mgmt}
 
 \subsection{The Virtual Machine}\label{sec:virtual_machine}
 
@@ -184,7 +197,7 @@ argument 0 \\
 
 \subsubsection{Opcodes}\label{sec:opcodes}
 
-the VM machine code is a sequence on one-octet opcodes followed by a variable number and length of arguments. Typical types of the arguments are unsigned 8bit values that denote a local relative to FP, signed 4-byte integers that are used e.g. as relative addresses, and serializations of actual values.
+the VM machine code is a sequence of one-octet opcodes followed by a variable number and length of arguments. Typical types of the arguments are unsigned 8bit values that denote a local relative to FP, signed 4-byte integers that are used e.g. as relative addresses, and serializations of actual values.
 
 \paragraph{NOOP}
 \paragraph{HALT}
@@ -219,9 +232,7 @@ the VM machine code is a sequence on one-octet opcodes followed by a variable nu
 \paragraph{JUMP\_LE}
 \paragraph{JUMP\_LT}
 
-\subsection{Networking}\label{sec:networking}
-
-\subsection{Transaction Safety}\label{sec:transaction_safety}
+\subsection{Locking}\label{sec:locking}
 
 \subsection{Persistence}\label{sec:persistence}
 
