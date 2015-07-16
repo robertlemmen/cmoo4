@@ -30,8 +30,8 @@ void net_make_listener(struct net_ctx *ctx, unsigned int port,
 void net_shutdown_listener(struct net_ctx *ctx, unsigned int port);
 
 void net_socket_init(struct net_socket *s, 
-    void (*read_callback)(void *buf, size_t size, void *cb_data),
-    void (*closed_callback)(void *cb_data),
+    void (*read_callback)(struct net_socket *s, void *buf, size_t size, void *cb_data),
+    void (*closed_callback)(struct net_socket *s, void *cb_data),
     void *cb_data);
 void net_socket_close(struct net_socket *s);
 void net_socket_free(struct net_socket *s);
