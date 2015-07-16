@@ -3,11 +3,16 @@
 #include <string.h>
 
 #include "net.h"
+#include "ntx.h"
+
+struct ntx_ctx *ntx = NULL;
 
 void read_cb(struct net_socket *socket, void *buf, size_t size, void *cb_data) {
     printf("# socket read callback %li\n", size);
     // send it back...
-    net_socket_write(socket, buf, size);
+    struct ntx_tx *tx = ntx_new_tx(ntx);
+    ntx_socket_write(tx, socket, buf, size);
+    ntx_commit_tx(tx);
 }
 
 void closed_cb(struct net_socket *socket, void *cb_data) {
@@ -29,6 +34,7 @@ void net_init_cb(struct net_ctx *net) {
     printf("# net init callback\n");
 
     net_make_listener(net, 12345, accept_error_cb, accept_cb, NULL);
+    ntx = ntx_new_ctx(net);
 }
 
 int main(int argc, char **argv) {
@@ -37,10 +43,11 @@ int main(int argc, char **argv) {
     struct net_ctx *net = net_new_ctx(net_init_cb);
     net_start(net);
 
-    sleep(2);
+    sleep(5);
 
     net_shutdown_listener(net, 12345);
     net_stop(net);
+    ntx_free_ctx(ntx);
     net_free_ctx(net);
 
     return 0;
