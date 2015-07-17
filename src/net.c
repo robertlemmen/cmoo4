@@ -102,7 +102,7 @@ struct net_socket {
                              // of red-black tree
 };
 
-// -------- internal utilities  --------
+// -------- internal utilities --------
 
 void net_enqueue_item(struct net_ctx *ctx, struct queue_item *item) {
     pthread_mutex_lock(&ctx->queue_latch);
@@ -140,7 +140,7 @@ void net_free_socket(struct net_socket *s) {
     free(s);
 }
 
-// -------- worker thread implementation  --------
+// -------- worker thread implementation --------
 
 void net_read_cb(struct ev_loop *loop, ev_io *watcher, int revents) {
     struct net_socket *socket = (struct net_socket*)watcher->data;
@@ -368,7 +368,7 @@ void* net_thread_func(void *arg) {
     return NULL;
 }
 
-// -------- implementation of public functions  --------
+// -------- implementation of public functions --------
 
 struct net_ctx* net_new_ctx(void (*init_callback)(struct net_ctx *ctx)) {
     struct net_ctx *ret = malloc(sizeof(struct net_ctx));

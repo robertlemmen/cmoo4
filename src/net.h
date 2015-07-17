@@ -17,6 +17,8 @@
 struct net_ctx;
 struct net_socket;
 
+// XXX if we would guarantee that all pending queue items are handled on start(), we
+// would not need an init callback, just create, start and get going!
 struct net_ctx* net_new_ctx(void (*init_callback)(struct net_ctx *ctx)); 
 void net_free_ctx(struct net_ctx *ctx);
 

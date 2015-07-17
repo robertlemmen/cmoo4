@@ -14,9 +14,9 @@ struct ntx_tx {
     struct ntx_ctx *ctx;
 };
 
-// -------- internal utilities  --------
+// -------- internal utilities --------
 
-// -------- implementation of public functions  --------
+// -------- implementation of public functions --------
 
 struct ntx_ctx* ntx_new_ctx(struct net_ctx *net) {
     struct ntx_ctx *ret = malloc(sizeof(struct ntx_ctx));
