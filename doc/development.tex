@@ -5,6 +5,7 @@
 \usepackage{microtype}
 \usepackage{listings}
 \usepackage{longtable}
+\usepackage{float}
 \usepackage[linkcolor=blue, colorlinks=true]{hyperref}
 
 \pdfinfo {            
@@ -121,7 +122,7 @@ The virtual machine is fairly simple: it has registers that hold the address of 
 
 So in a method call with two arguments passed in, FP will point to the first argument, and SP to the last element on the stack, the second argument. In the visualisation below, the horizontal lines show the boundaries of the call frames on the stack:
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
 \begin{tabular}{|p{3cm}|p{3cm}}
 argument 1 & $\leftarrow$ SP \\
@@ -133,7 +134,7 @@ argument 0 & $\leftarrow$ FP \\
 
 Note that in a method with only one argument, SP and FP will initially point to the same stack element, and in a method with nor aguments FP will initially point to an element beyond the stack! The number of arguments provided can be calculated using SP and FP, the method code is expected to assert that this is the expected number first. Additionally, the method can reserve a number of ``locals'' on the stack for use, these are initialized to NIL. Since most methods will do both, this is done by a combined opcode \verb|ARGS_LOCALS|. So assuming the two arguments, and one local, the stack would then look as follows:
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
 \begin{tabular}{|p{3cm}|p{3cm}}
 local 0 & $\leftarrow$ SP \\
@@ -146,7 +147,7 @@ argument 0 & $\leftarrow$ FP \\
 
 The stack can also be used in a more dynamic fashion using \verb|PUSH| and \verb|POP|, and even these values can be addressed relative to FP, although that is typically difficult to realise in code. These values are called ``intermediates''. So after a \verb|PUSH|, the stack would look as follows:
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
 \begin{tabular}{|p{3cm}|p{3cm}}
 intermediate 0 & $\leftarrow$ SP \\
@@ -160,7 +161,7 @@ argument 0 & $\leftarrow$ FP \\
 
 When calling another method, the caller has to pu the callee objref, the callee method name and all arguments on the stack. For example if we were to do that with \verb|PUSH|, the stack would look like this just before the call:
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
 \begin{tabular}{|p{3cm}|p{3cm}}
 argument 0 & $\leftarrow$ SP \\
@@ -177,7 +178,7 @@ argument 0 & $\leftarrow$ FP \\
 
 The caller will then issue a \verb|CALL| opcoode supplying the number of arguments, which will locate the object and method, and overwrite the corresponding slots with information it needs for the return: the IP when called and the previous FP:
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
 \begin{tabular}{|p{3cm}|p{3cm}}
 argument 0 & $\leftarrow$ SP, FP \\
