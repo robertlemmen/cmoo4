@@ -59,6 +59,7 @@ void tasks_free_ctx(struct tasks_ctx *ctx) {
 }
 
 void tasks_start(struct tasks_ctx *ctx) {
+    // XXX move into worker thread, into some "init" procedure
     net_make_listener(ctx->net, 12345, accept_error_cb, accept_cb, ctx);
 }
 
