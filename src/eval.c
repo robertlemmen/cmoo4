@@ -1,6 +1,7 @@
 #include "eval.h"
 
 #include <stdlib.h>
+#include <string.h>
 // XXX
 #include <stdio.h>
 
@@ -143,6 +144,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             }
             val_clear(&ctx->fp[dst].val);
             ctx->fp[dst].val = ctx->fp[src].val;
+            val_inc_ref(ctx->fp[src].val);
             // XXX need to increment refcount for non-immediates
             DISPATCH();
         }
@@ -158,6 +160,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             // no cleanup of target needed as we are growing the stack,
             // therefore the target is already clean
             ctx->sp->val = ctx->fp[src].val;
+            val_inc_ref(ctx->fp[src].val);
             DISPATCH();
         }
         do_pop: {
@@ -233,6 +236,17 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             DISPATCH();
         }
         do_load_float: {
+            uint8_t reg = *((uint8_t*)ip);
+            ip += 1;
+            float nval = *((float*)ip);
+            ip += 4;
+            printf("| LOAD_FLOAT r0x%02X <- %8.3f     |\n", reg, nval);
+            if (&ctx->fp[reg] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            val_clear(&ctx->fp[reg].val);
+            ctx->fp[reg].val = val_make_float(nval);
             DISPATCH();
         }
         do_type: {
@@ -380,13 +394,20 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
                     result = false;
                 }
                 else if (val_type(ctx->fp[src_a].val) == TYPE_INT) {
-                    result = val_get_int(ctx->fp[src_a].val) == val_get_int(ctx->fp[src_b].val);
+                    result = val_get_int(ctx->fp[src_a].val) 
+                                == val_get_int(ctx->fp[src_b].val);
                 }
                 else if (val_type(ctx->fp[src_a].val) == TYPE_BOOL) {
-                    result = val_get_bool(ctx->fp[src_a].val) == val_get_bool(ctx->fp[src_b].val);
+                    result = val_get_bool(ctx->fp[src_a].val) 
+                                == val_get_bool(ctx->fp[src_b].val);
                 }
+                else if (val_type(ctx->fp[src_a].val) == TYPE_STRING) {
+                    result = strcmp(val_get_string(ctx->fp[src_a].val), 
+                                    val_get_string(ctx->fp[src_b].val)) 
+                               == 0;
+                }
+                // XXX float
             }
-            // XXX more types
             ctx->fp[dst].val = val_make_bool(result);
             DISPATCH();
         }
@@ -417,9 +438,15 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             val_clear(&ctx->fp[dst].val);
             bool result = false;
             if (val_type(ctx->fp[src_a].val) == TYPE_INT) {
-                result = val_get_int(ctx->fp[src_a].val) <= val_get_int(ctx->fp[src_b].val);
+                result = val_get_int(ctx->fp[src_a].val) 
+                            <= val_get_int(ctx->fp[src_b].val);
             }
-            // XXX float/string
+            else if (val_type(ctx->fp[src_a].val) == TYPE_STRING) {
+                result = strcmp(val_get_string(ctx->fp[src_a].val), 
+                                val_get_string(ctx->fp[src_b].val)) 
+                           <= 0;
+            }
+            // XXX float
             else {
                 printf("!! argument type mismatch\n");
             }
@@ -453,9 +480,15 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             val_clear(&ctx->fp[dst].val);
             bool result = false;
             if (val_type(ctx->fp[src_a].val) == TYPE_INT) {
-                result = val_get_int(ctx->fp[src_a].val) < val_get_int(ctx->fp[src_b].val);
+                result = val_get_int(ctx->fp[src_a].val) 
+                            < val_get_int(ctx->fp[src_b].val);
             }
-            // XXX float/string
+            else if (val_type(ctx->fp[src_a].val) == TYPE_STRING) {
+                result = strcmp(val_get_string(ctx->fp[src_a].val), 
+                                val_get_string(ctx->fp[src_b].val)) 
+                           < 0;
+            }
+            // XXX float
             else {
                 printf("!! argument type mismatch\n");
             }
@@ -486,15 +519,19 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
                     != val_type(ctx->fp[src_b].val) ) {
                 printf("!! parameter type mismatch\n");
             }
-            val_clear(&ctx->fp[dst].val);
             if (val_type(ctx->fp[src_a].val) == TYPE_INT) {
-                ctx->fp[dst].val = val_make_int(
-                      val_get_int(ctx->fp[src_a].val)
-                    + val_get_int(ctx->fp[src_b].val)
-                );
+                int result = val_get_int(ctx->fp[src_a].val)
+                    + val_get_int(ctx->fp[src_b].val);
+                val_clear(&ctx->fp[dst].val);
+                ctx->fp[dst].val = val_make_int(result);
+            }
+            else if (val_type(ctx->fp[src_a].val) == TYPE_FLOAT) {
+                float result = val_get_float(ctx->fp[src_a].val)
+                    + val_get_float(ctx->fp[src_b].val);
+                val_clear(&ctx->fp[dst].val);
+                ctx->fp[dst].val = val_make_float(result);
             }
             else {
-                // XXX need case for float as well
                 printf("!! parameter type mismatch\n");
             }
             DISPATCH();
@@ -529,8 +566,13 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
                 val_clear(&ctx->fp[dst].val);
                 ctx->fp[dst].val = val_make_int(result);
             }
+            else if (val_type(ctx->fp[src_a].val) == TYPE_FLOAT) {
+                float result = val_get_float(ctx->fp[src_a].val)
+                    - val_get_float(ctx->fp[src_b].val);
+                val_clear(&ctx->fp[dst].val);
+                ctx->fp[dst].val = val_make_float(result);
+            }
             else {
-                // XXX need case for float as well
                 printf("!! parameter type mismatch\n");
             }
             DISPATCH();
@@ -559,15 +601,19 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
                     != val_type(ctx->fp[src_b].val) ) {
                 printf("!! parameter type mismatch\n");
             }
-            val_clear(&ctx->fp[dst].val);
             if (val_type(ctx->fp[src_a].val) == TYPE_INT) {
-                ctx->fp[dst].val = val_make_int(
-                      val_get_int(ctx->fp[src_a].val)
-                    * val_get_int(ctx->fp[src_b].val)
-                );
+                int result = val_get_int(ctx->fp[src_a].val)
+                    * val_get_int(ctx->fp[src_b].val);
+                val_clear(&ctx->fp[dst].val);
+                ctx->fp[dst].val = val_make_int(result);
+            }
+            if (val_type(ctx->fp[src_a].val) == TYPE_FLOAT) {
+                float result = val_get_float(ctx->fp[src_a].val)
+                    * val_get_float(ctx->fp[src_b].val);
+                val_clear(&ctx->fp[dst].val);
+                ctx->fp[dst].val = val_make_float(result);
             }
             else {
-                // XXX need case for float as well
                 printf("!! parameter type mismatch\n");
             }
             DISPATCH();

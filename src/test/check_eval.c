@@ -25,6 +25,11 @@ void eval_debug_callback(val v, void *a) {
         sprintf(buffer, "I%i", val_get_int(v));
         strcat(res, buffer);
     }
+    else if (val_type(v) == TYPE_FLOAT) {
+        char buffer[20];
+        sprintf(buffer, "f%.3f", val_get_float(v));
+        strcat(res, buffer);
+    }
     else {
         ck_abort_msg("unexpected type in debug callback");
     }
@@ -298,6 +303,56 @@ START_TEST(test_eval_07) {
 }
 END_TEST
 
+START_TEST(test_eval_08) {
+    struct eval_ctx *ex = eval_new_ctx();
+
+    char trace[4096];
+    trace[0] = '\0';
+    eval_set_dbg_handler(ex, &eval_debug_callback, trace);
+ 
+    float v1 = 1.23;
+    float v2 = -345.67;
+    float v3 = 0.023;
+ 
+    opcode code[] = {   OP_NOOP, 
+                        OP_ARGS_LOCALS, 0x00, 0x04,
+                        OP_LOAD_FLOAT, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        OP_LOAD_FLOAT, 0x01, 0x00, 0x00, 0x00, 0x00,
+                        OP_LOAD_FLOAT, 0x02, 0x00, 0x00, 0x00, 0x00,
+                        OP_DEBUGR, 0x00,
+                        OP_DEBUGR, 0x01,
+                        OP_DEBUGR, 0x02,
+                        OP_ADD, 0x03, 0x00, 0x01,
+                        OP_DEBUGR, 0x03,
+                        OP_ADD, 0x03, 0x00, 0x02,
+                        OP_DEBUGR, 0x03,
+                        OP_ADD, 0x03, 0x01, 0x02,
+                        OP_DEBUGR, 0x03,
+                        OP_SUB, 0x03, 0x00, 0x01,
+                        OP_DEBUGR, 0x03,
+                        OP_SUB, 0x03, 0x00, 0x02,
+                        OP_DEBUGR, 0x03,
+                        OP_SUB, 0x03, 0x01, 0x02,
+                        OP_DEBUGR, 0x03,
+                        OP_HALT};
+    // XXX mul and div
+
+    memcpy(&code[6], &v1, sizeof(float));
+    memcpy(&code[12], &v2, sizeof(float));
+    memcpy(&code[18], &v3, sizeof(float));
+
+    eval_exec(ex, code);
+
+    printf("debug trace: %s\n", trace);
+    ck_assert_msg(strcmp(trace, "f1.230f-345.670f0.023f-344.440f1.253f-345.647f346.900f1.207f-345.693") == 0,
+        "unexpected debug callback trace");
+
+    eval_free_ctx(ex); 
+}
+END_TEST
+
+// XXX test for float eq,lt,le
+
 TCase* make_eval_checks(void) {
     TCase *tc_eval;
 
@@ -309,6 +364,7 @@ TCase* make_eval_checks(void) {
     tcase_add_test(tc_eval, test_eval_05);
     tcase_add_test(tc_eval, test_eval_06);
     tcase_add_test(tc_eval, test_eval_07);
+    tcase_add_test(tc_eval, test_eval_08);
 
     return tc_eval;
 }
