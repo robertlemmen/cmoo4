@@ -8,12 +8,15 @@
 #include <pthread.h>
 #include <ev.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 // XXX
 #include <stdio.h>
 
-#define QUEUE_TYPE_STOP         0
-#define QUEUE_TYPE_NEW_LISTENER 1
+#define QUEUE_TYPE_STOP          0
+#define QUEUE_TYPE_NEW_LISTENER  1
+#define QUEUE_TYPE_STOP_LISTENER 2
+#define QUEUE_TYPE_FREE_SOCKET   3
 
 // -------- internal structures --------
 
@@ -25,10 +28,20 @@ struct new_listener_info {
     void *cb_data;
 };
 
+struct stop_listener_info {
+    int port;
+};
+
+struct free_socket_info {
+    struct net_socket *socket;
+};
+
 struct queue_item {
     int type;
     union {
         struct new_listener_info new_listener;
+        struct stop_listener_info stop_listener;
+        struct free_socket_info free_socket;
     };
     struct queue_item *next;
 };
@@ -56,6 +69,7 @@ struct net_ctx {
     struct ev_async queue_event;
 
     struct listener_ctx *listeners;
+    struct net_socket *open_sockets;
 
     void (*init_callback)(struct net_ctx *ctx);
 };
@@ -63,6 +77,7 @@ struct net_ctx {
 struct socket_buffer {
     void *data;
     size_t size;
+    size_t level;
     struct socket_buffer *next;
 };
 
@@ -71,8 +86,8 @@ struct net_socket {
     int refcount;
     struct net_ctx *net_ctx;
     
-    void (*read_callback)(void *buf, size_t size, void *cb_data);
-    void (*closed_callback)(void *cb_data);
+    void (*read_callback)(struct net_socket *s, void *buf, size_t size, void *cb_data);
+    void (*closed_callback)(struct net_socket *s, void *cb_data);
     void *cb_data;
 
     ev_io read_event;
@@ -82,35 +97,79 @@ struct net_socket {
     struct socket_buffer *last_buffer;
 
     pthread_mutex_t socket_latch; // XXX just "latch"?
+
+    struct net_socket *next; // for storing in net_ctx's list XXX this should of course be some sort
+                             // of red-black tree
 };
 
-// -------- worker thread implementation  --------
+// -------- internal utilities --------
+
+void net_enqueue_item(struct net_ctx *ctx, struct queue_item *item) {
+    pthread_mutex_lock(&ctx->queue_latch);
+    if (ctx->queue_back) {
+        ctx->queue_back->next = item;
+    }
+    else {
+        ctx->queue_front = item;
+    }
+    ctx->queue_back = item;
+    ev_async_send(ctx->loop, &ctx->queue_event);
+    pthread_mutex_unlock(&ctx->queue_latch);
+}
+
+void net_socket_dec_refcount(struct net_socket *s) {
+    s->refcount--;
+    if (s->refcount == 0) {
+        struct queue_item *free_socket_item = malloc(sizeof(struct queue_item));   
+        free_socket_item->type = QUEUE_TYPE_FREE_SOCKET;
+        free_socket_item->next = NULL;
+        free_socket_item->free_socket.socket = s;
+        net_enqueue_item(s->net_ctx, free_socket_item);
+    }
+}
+
+void net_free_socket(struct net_socket *s) {
+    // clean up
+    while (s->first_buffer) {
+        struct socket_buffer *current_buffer = s->first_buffer;
+        s->first_buffer = s->first_buffer->next;
+        free(current_buffer->data);
+        free(current_buffer);
+    }
+    pthread_mutex_destroy(&s->socket_latch);
+    free(s);
+}
+
+// -------- worker thread implementation --------
 
 void net_read_cb(struct ev_loop *loop, ev_io *watcher, int revents) {
     struct net_socket *socket = (struct net_socket*)watcher->data;
     // XXX bufsize should really be configurable...
     char buf[256];
     ssize_t count = read(watcher->fd, buf, 256);
-    if (count == 0) {
-        printf("eof on socket\n");
+    if (count <= 0) {
+        if (count == 0) {
+            // EOF
+        }
+        else {
+            printf("error on socket read: %s\n", strerror(errno));
+        }
         close(socket->socket);
         ev_io_stop(socket->net_ctx->loop, &socket->read_event);
         if (socket->first_buffer) {
             ev_io_stop(socket->net_ctx->loop, &socket->write_event);
         }
         socket->socket = 0;
-        // XXX EOF, call closed cb 
-    }
-    else if (count < 0) {
-        // XXX error, close as above
-        printf("error on socket read: %s\n", strerror(errno));
+        if (socket->closed_callback) {
+            socket->closed_callback(socket, socket->cb_data);
+        }
+        net_socket_dec_refcount(socket);
     }
     else {
-        printf("net_read_cb %li\n", count);
         if (socket->read_callback) {
             char *nbuf = malloc(count);
             memcpy(nbuf, buf, count);
-            socket->read_callback(nbuf, count, socket->cb_data);
+            socket->read_callback(socket, nbuf, count, socket->cb_data);
         }
     }
 }
@@ -118,9 +177,30 @@ void net_read_cb(struct ev_loop *loop, ev_io *watcher, int revents) {
 void net_write_cb(struct ev_loop *loop, ev_io *watcher, int revents) {
     struct net_socket *socket = (struct net_socket*)watcher->data;
     pthread_mutex_lock(&socket->socket_latch);
-    ssize_t count = write(watcher->fd, socket->first_buffer->data, socket->first_buffer->size);
-    printf("net_write_cb %li\n", count);
-    ev_io_stop(socket->net_ctx->loop, &socket->write_event);
+    ssize_t count = write(watcher->fd, 
+        (unsigned char*)socket->first_buffer->data + socket->first_buffer->level, 
+        socket->first_buffer->size - socket->first_buffer->level);
+    if (count < 0) {
+        printf("error on write\n");
+        // XXX do something
+        ev_io_stop(socket->net_ctx->loop, &socket->write_event);
+    }
+    else {
+        socket->first_buffer->level += count;
+        if (socket->first_buffer->level == socket->first_buffer->size) {
+            // all written, go to next buffer
+            struct socket_buffer *temp_buffer = socket->first_buffer;
+            socket->first_buffer = socket->first_buffer->next;
+            if (!socket->first_buffer) {
+                // no more buffers to write
+                socket->last_buffer = NULL;
+                ev_io_stop(socket->net_ctx->loop, &socket->write_event);
+
+            }
+            free(temp_buffer->data);
+            free(temp_buffer);
+        }
+    }
     pthread_mutex_unlock(&socket->socket_latch);
 }
 
@@ -131,12 +211,9 @@ void net_accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
 
     struct net_socket *nsock = malloc(sizeof(struct net_socket));
     nsock->socket = accept(watcher->fd, (struct sockaddr *)&client_addr, &addr_len);
+    fcntl(nsock->socket, F_SETFL, fcntl(nsock->socket, F_GETFL) | O_NONBLOCK);
     nsock->refcount = 2;
     nsock->net_ctx = lctx->net_ctx;
-/*    pthread_mutexattr_t mutex_attr;
-    pthread_mutexattr_init(&mutex_attr);
-    pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE_NP);
-*/
     if (pthread_mutex_init(&nsock->socket_latch, NULL) != 0) {
         fprintf(stderr, "pthread_mutex_init failed\n");
         exit(1);
@@ -151,7 +228,9 @@ void net_accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     nsock->first_buffer = NULL;
     nsock->last_buffer = NULL;
 
-    // XXX also make non-blocking?
+    // link into net_ctx
+    nsock->next = lctx->net_ctx->open_sockets;
+    lctx->net_ctx->open_sockets = nsock;
 
     lctx->accept_callback(lctx->net_ctx, nsock, lctx->cb_data);
 }
@@ -209,17 +288,14 @@ void queue_event_callback(struct ev_loop *loop, struct ev_async *w, int revents)
     struct queue_item *current_item = NULL;
     // XXX check for return value
     pthread_mutex_lock(&ctx->queue_latch);
-    if (ctx->queue_front) {
+    while (ctx->queue_front) {
         current_item = ctx->queue_front;
         ctx->queue_front = current_item->next;
         current_item->next = NULL;
         if (!ctx->queue_front) {
             ctx->queue_back = NULL;
         }
-    }
-    pthread_mutex_unlock(&ctx->queue_latch);
 
-    if (current_item) {
         switch (current_item->type) {
             case QUEUE_TYPE_STOP:
                 ctx->stop_flag = 1;
@@ -228,12 +304,56 @@ void queue_event_callback(struct ev_loop *loop, struct ev_async *w, int revents)
             case QUEUE_TYPE_NEW_LISTENER:
                 make_listener(ctx, &current_item->new_listener);
                 break;
+            case QUEUE_TYPE_STOP_LISTENER:;
+                struct listener_ctx *current_listener = ctx->listeners;
+                struct listener_ctx *prev_listener = NULL;
+                while (current_listener) {
+                    if (current_listener->port == current_item->stop_listener.port) {
+                        // unlink from list
+                        if (prev_listener) {
+                            prev_listener->next = current_listener->next;
+                        }
+                        else {
+                            ctx->listeners = current_listener->next;
+                        }
+                        free(current_listener); 
+                        
+                        break;
+                    }
+                    // advance
+                    prev_listener = current_listener;
+                    current_listener = current_listener->next;
+                }
+                break;
+            case QUEUE_TYPE_FREE_SOCKET:;
+                struct net_socket *current_socket = ctx->open_sockets;
+                struct net_socket *prev_socket = NULL;
+                while (current_socket) {
+                    if (current_socket == current_item->free_socket.socket) {
+                        // unlink from list
+                        if (prev_socket) {
+                            prev_socket->next = current_socket->next;
+                        }
+                        else {
+                            ctx->open_sockets = current_socket->next;
+                        }
+                        net_free_socket(current_socket);
+                        
+                        break;
+                    }
+                    // advance
+                    prev_socket = current_socket;
+                    current_socket = current_socket->next;
+                }
+                break;
             default:
                 printf("jhkkjh\n");
                 // XXX complain
         }
         free(current_item);
+
     }
+    pthread_mutex_unlock(&ctx->queue_latch);
 }
 
 void* net_thread_func(void *arg) {
@@ -248,33 +368,7 @@ void* net_thread_func(void *arg) {
     return NULL;
 }
 
-// -------- internal utilities  --------
-
-void net_enqueue_item(struct net_ctx *ctx, struct queue_item *item) {
-    pthread_mutex_lock(&ctx->queue_latch);
-    if (ctx->queue_back) {
-        ctx->queue_back->next = item;
-    }
-    else {
-        ctx->queue_front = item;
-    }
-    ctx->queue_back = item;
-    pthread_mutex_unlock(&ctx->queue_latch);
-
-    ev_async_send(ctx->loop, &ctx->queue_event);
-}
-
-void net_socket_dec_refcount(struct net_socket *s) {
-    s->refcount--;
-    if (s->refcount == 0) {
-        // XXX cleanup, this requires telling the net_ctx event queue in order
-        // to allow cleanup of all sockets when system shuts down, so net_ctx needs
-        // to keep list of sockets...
-    }
-}
-
-
-// -------- implementation of public functions  --------
+// -------- implementation of public functions --------
 
 struct net_ctx* net_new_ctx(void (*init_callback)(struct net_ctx *ctx)) {
     struct net_ctx *ret = malloc(sizeof(struct net_ctx));
@@ -284,6 +378,7 @@ struct net_ctx* net_new_ctx(void (*init_callback)(struct net_ctx *ctx)) {
 
     ret->queue_front = NULL;
     ret->queue_back = NULL;
+    ret->open_sockets = NULL;
     if (pthread_mutex_init(&ret->queue_latch, NULL) != 0) {
         fprintf(stderr, "pthread_mutex_init failed\n");
         exit(1);
@@ -296,9 +391,35 @@ struct net_ctx* net_new_ctx(void (*init_callback)(struct net_ctx *ctx)) {
 }
 
 void net_free_ctx(struct net_ctx *ctx) {
+    // clean up open sockets
+    struct net_socket *current_socket = ctx->open_sockets;
+    while (current_socket) {
+        struct net_socket *temp_socket = current_socket;
+        current_socket = current_socket->next;
+
+        if (temp_socket->socket) {
+            shutdown(temp_socket->socket, SHUT_RDWR);
+            close(temp_socket->socket);
+            ev_io_stop(temp_socket->net_ctx->loop, &temp_socket->read_event);
+            if (temp_socket->first_buffer) {
+                ev_io_stop(temp_socket->net_ctx->loop, &temp_socket->write_event);
+            }
+            temp_socket->socket = 0;
+        }
+
+        net_free_socket(temp_socket);
+            
+    }
+    // clean up listeners
+    struct listener_ctx *current_listener = ctx->listeners;
+    while (current_listener) {
+        struct listener_ctx *temp_listener = current_listener;
+        current_listener = current_listener->next;
+        free(temp_listener);
+    }
+
     ev_loop_destroy(ctx->loop);
     pthread_mutex_destroy(&ctx->queue_latch);
-    // XXX more cleanups
     free(ctx);
 }
 
@@ -329,8 +450,6 @@ void net_make_listener(struct net_ctx *ctx, unsigned int port,
             void *cb_data), 
         void *cb_data) {
 
-    printf("net_make_listener()\n");
-
     struct queue_item *listener_item = malloc(sizeof(struct queue_item));   
     listener_item->type = QUEUE_TYPE_NEW_LISTENER;
     listener_item->next = NULL;
@@ -343,12 +462,17 @@ void net_make_listener(struct net_ctx *ctx, unsigned int port,
 }
 
 void net_shutdown_listener(struct net_ctx *ctx, unsigned int port) {
-    // XXX
+    struct queue_item *listener_item = malloc(sizeof(struct queue_item));   
+    listener_item->type = QUEUE_TYPE_STOP_LISTENER;
+    listener_item->next = NULL;
+    listener_item->stop_listener.port = port;
+
+    net_enqueue_item(ctx, listener_item);
 }
 
 void net_socket_init(struct net_socket *s, 
-        void (*read_callback)(void *buf, size_t size, void *cb_data),
-        void (*closed_callback)(void *cb_data),
+        void (*read_callback)(struct net_socket *s, void *buf, size_t size, void *cb_data),
+        void (*closed_callback)(struct net_socket *s, void *cb_data),
         void *cb_data) {
     s->read_callback = read_callback;
     s->closed_callback = closed_callback;
@@ -376,11 +500,11 @@ void net_socket_free(struct net_socket *s) {
 }
 
 void net_socket_write(struct net_socket *s, void *buf, size_t size) {
-    printf("net_socket_write\n");
     pthread_mutex_lock(&s->socket_latch);
     struct socket_buffer *sbuf = malloc(sizeof(struct socket_buffer));
     sbuf->data = buf;
     sbuf->size = size;
+    sbuf->level = 0;
     sbuf->next = NULL;
     if (s->last_buffer) {
         s->last_buffer->next = sbuf;

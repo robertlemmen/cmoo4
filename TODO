@@ -7,19 +7,23 @@ next main jobs
 - strings
 - call/return, requires stub object stuff
 - getglobal/setglobal subs
-- task system that build on top of eval and suspends evaluation
-- networking and so forth, towards single-threaded, stub db version
-- then hashes/arrays
-- locking, persistence, multiple threads
+
+- networking and network tx, towards single-thread ops at the moment
+- task system that build on top of eval and suspends evaluation (single-threaded)
+
+- stup locking
+- stub persistence 
 
 after basic case works
 ----------------------
+- hashes/arrays
 - div/idiv/mod
 - jump_eq, jump_ne, jump_le, jump_lt
 - floats
 - inc/dec calls for ints
+- support for multiple threads
 
-small fry
----------
+non-code
+--------
 - document vm evaluator and type system
 - document stuff as we go along

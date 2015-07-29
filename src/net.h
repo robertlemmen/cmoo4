@@ -17,6 +17,8 @@
 struct net_ctx;
 struct net_socket;
 
+// XXX if we would guarantee that all pending queue items are handled on start(), we
+// would not need an init callback, just create, start and get going!
 struct net_ctx* net_new_ctx(void (*init_callback)(struct net_ctx *ctx)); 
 void net_free_ctx(struct net_ctx *ctx);
 
@@ -30,8 +32,8 @@ void net_make_listener(struct net_ctx *ctx, unsigned int port,
 void net_shutdown_listener(struct net_ctx *ctx, unsigned int port);
 
 void net_socket_init(struct net_socket *s, 
-    void (*read_callback)(void *buf, size_t size, void *cb_data),
-    void (*closed_callback)(void *cb_data),
+    void (*read_callback)(struct net_socket *s, void *buf, size_t size, void *cb_data),
+    void (*closed_callback)(struct net_socket *s, void *cb_data),
     void *cb_data);
 void net_socket_close(struct net_socket *s);
 void net_socket_free(struct net_socket *s);
