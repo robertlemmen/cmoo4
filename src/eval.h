@@ -98,7 +98,7 @@
 #define OP_DEBUGI            2 // int32:msg      
 #define OP_DEBUGR            3 // reg8:msg
 #define OP_MOV               4 // reg8:dst <- reg8:src
-#define OP_PUSH              5 // SP++ <- reg8:src
+#define OP_PUSH              5 // ++SP <- reg8:src
 #define OP_POP               6 // reg8:dst <- SP--
 #define OP_CALL              7 // int8:nargs
 #define OP_RETURN            8 // reg8:value

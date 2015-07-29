@@ -147,9 +147,29 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             DISPATCH();
         }
         do_push: {
+            uint8_t src = *((uint8_t*)ip);
+            ip += 1;
+            if (&ctx->fp[src] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            // XXX make sure there is space on stack
+            ctx->sp++;
+            // no cleanup of target needed as we are growing the stack,
+            // therefore the target is already clean
+            ctx->sp->val = ctx->fp[src].val;
             DISPATCH();
         }
         do_pop: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            val_clear(&ctx->fp[dst].val);
+            ctx->fp[dst].val = ctx->sp->val;
+            ctx->sp--;
             DISPATCH();
         }
         do_call: {

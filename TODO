@@ -3,7 +3,6 @@ C M O O   T O D O
 
 next main jobs
 --------------
-- push/pop
 - strings
 - call/return, requires stub object stuff
 - getglobal/setglobal subs
