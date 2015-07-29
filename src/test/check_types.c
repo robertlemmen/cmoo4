@@ -34,11 +34,27 @@ START_TEST(test_types_01) {
 }
 END_TEST
 
+START_TEST(test_types_02) {
+    val v;
+
+    char *in1 = "test234";
+
+    v = val_make_string(in1);
+    ck_assert(val_type(v) == TYPE_STRING);
+
+    char *out = val_get_string(v);
+    ck_assert(strcmp(out, in1) == 0);
+
+    val_dec_ref(v);
+}
+END_TEST
+
 TCase* make_types_checks(void) {
     TCase *tc_types;
 
     tc_types = tcase_create("Types");
     tcase_add_test(tc_types, test_types_01);
+    tcase_add_test(tc_types, test_types_02);
 
     return tc_types;
 }

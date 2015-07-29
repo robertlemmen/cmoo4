@@ -3,7 +3,7 @@ C M O O   T O D O
 
 next main jobs
 --------------
-- strings
+- current opcodes support for strings
 - call/return, requires stub object stuff
 - getglobal/setglobal subs
 

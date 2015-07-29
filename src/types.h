@@ -33,6 +33,7 @@ val val_make_nil(void);
 val val_make_bool(bool i);
 val val_make_int(int i);
 val val_make_float(float i);
+val val_make_string(char *s); // copies, does not consume argument
 // XXX more creators
 
 /* sets the value pointed to to NIL and runs cleanups for non-immediates
@@ -40,12 +41,16 @@ val val_make_float(float i);
 void val_clear(val *v);
 /* also set to NIL, but performs no cleanups */
 void val_init(val *v);
+
+void val_inc_ref(val v);
+void val_dec_ref(val v);
+
 /* get the value assuming that the type is correct */
 bool val_get_bool(val v);
 int val_get_int(val v);
 float val_get_float(val v);
+char* val_get_string(val v);
 // XXX more getters
 
-// XXX way to increment refcount when copying
 
 #endif /* TYPES_H */
