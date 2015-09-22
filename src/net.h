@@ -39,4 +39,10 @@ void net_socket_close(struct net_socket *s);
 void net_socket_free(struct net_socket *s);
 void net_socket_write(struct net_socket *s, void *buf, size_t size);
 
+// the tasks subsystem wants to store some data per socket, so we give it
+// an opaque place for that
+// XXX not sure this is really needed...
+void net_socket_set_taskdata(struct net_socket *s, void *td);
+void* net_socket_get_taskdata(struct net_socket *s);
+
 #endif /* NET_H */

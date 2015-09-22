@@ -5,13 +5,14 @@ next main jobs
 --------------
 - current opcodes support for strings
 - call/return, requires stub object stuff
-- getglobal/setglobal subs
+- getglobal/setglobal stubs
 
 - networking and network tx, towards single-thread ops at the moment
 - task system that build on top of eval and suspends evaluation (single-threaded)
 
-- stup locking
+- stub locking
 - stub persistence 
+-> very basic, single-threaded "echo" type server
 
 after basic case works
 ----------------------

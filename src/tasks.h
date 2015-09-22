@@ -5,7 +5,7 @@
 #include "net.h"
 
 /* there is a nasty complication in all this once we have more than one 
- * thread: two inputs copuld come from the net subsystem in rapid 
+ * thread: two inputs could come from the net subsystem in rapid 
  * succession, so we need some sort of locking to make sure that the 
  * second one does not jump the queue. since all proper locking is done 
  * on the other side of the VM, this means that the VM needs a way to 
@@ -20,7 +20,7 @@
  *
  * also note that this initial lock on the base object needs to be an 
  * exclusive lock! the assumption is that the object in question is a
- * socker representation, so it does not cause great contention to 
+ * socket representation, so it does not cause great contention to 
  * have this exclusive lock
  * */
 

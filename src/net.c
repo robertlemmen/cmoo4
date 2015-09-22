@@ -13,12 +13,14 @@
 // XXX
 #include <stdio.h>
 
+// -------- internal structures --------
+
 #define QUEUE_TYPE_STOP          0
 #define QUEUE_TYPE_NEW_LISTENER  1
 #define QUEUE_TYPE_STOP_LISTENER 2
 #define QUEUE_TYPE_FREE_SOCKET   3
-
-// -------- internal structures --------
+#define QUEUE_TYPE_INIT_SOCKET   4
+#define QUEUE_TYPE_WRITE_SOCKET 5
 
 struct new_listener_info {
     int port;
@@ -36,12 +38,27 @@ struct free_socket_info {
     struct net_socket *socket;
 };
 
+struct init_socket_info {
+    struct net_socket *socket;
+    void (*read_callback)(struct net_socket *s, void *buf, size_t size, void *cb_data);
+    void (*closed_callback)(struct net_socket *s, void *cb_data);
+    void *cb_data;
+};
+
+struct write_socket_info {
+    struct net_socket *socket;
+    void *buf;
+    size_t size;
+};
+
 struct queue_item {
     int type;
     union {
         struct new_listener_info new_listener;
         struct stop_listener_info stop_listener;
         struct free_socket_info free_socket;
+        struct init_socket_info init_socket;
+        struct write_socket_info write_socket;
     };
     struct queue_item *next;
 };
@@ -98,6 +115,8 @@ struct net_socket {
 
     pthread_mutex_t socket_latch; // XXX just "latch"?
 
+    void *task_data;
+
     struct net_socket *next; // for storing in net_ctx's list XXX this should of course be some sort
                              // of red-black tree
 };
@@ -117,14 +136,15 @@ void net_enqueue_item(struct net_ctx *ctx, struct queue_item *item) {
     pthread_mutex_unlock(&ctx->queue_latch);
 }
 
+// hmm, we seem to call this from both sides of the queue...
 void net_socket_dec_refcount(struct net_socket *s) {
     s->refcount--;
     if (s->refcount == 0) {
-        struct queue_item *free_socket_item = malloc(sizeof(struct queue_item));   
-        free_socket_item->type = QUEUE_TYPE_FREE_SOCKET;
-        free_socket_item->next = NULL;
-        free_socket_item->free_socket.socket = s;
-        net_enqueue_item(s->net_ctx, free_socket_item);
+        struct queue_item *item = malloc(sizeof(struct queue_item));   
+        item->type = QUEUE_TYPE_FREE_SOCKET;
+        item->next = NULL;
+        item->free_socket.socket = s;
+        net_enqueue_item(s->net_ctx, item);
     }
 }
 
@@ -346,6 +366,31 @@ void queue_event_callback(struct ev_loop *loop, struct ev_async *w, int revents)
                     current_socket = current_socket->next;
                 }
                 break;
+            case QUEUE_TYPE_INIT_SOCKET:;
+                struct net_socket *socket = current_item->init_socket.socket;
+                socket->read_callback = current_item->init_socket.read_callback;
+                socket->closed_callback = current_item->init_socket.closed_callback;
+                socket->cb_data = current_item->init_socket.cb_data;
+                ev_io_start(socket->net_ctx->loop, &socket->read_event);
+                break;
+            case QUEUE_TYPE_WRITE_SOCKET:;
+                socket = current_item->write_socket.socket;
+                pthread_mutex_lock(&socket->socket_latch);
+                struct socket_buffer *sbuf = malloc(sizeof(struct socket_buffer));
+                sbuf->data = current_item->write_socket.buf;
+                sbuf->size = current_item->write_socket.size;
+                sbuf->level = 0;
+                sbuf->next = NULL;
+                if (socket->last_buffer) {
+                    socket->last_buffer->next = sbuf;
+                }
+                socket->last_buffer = sbuf;
+                if (!socket->first_buffer) {
+                    socket->first_buffer = sbuf;
+                    ev_io_start(socket->net_ctx->loop, &socket->write_event);
+                }
+                pthread_mutex_unlock(&socket->socket_latch);
+                break;
             default:
                 printf("jhkkjh\n");
                 // XXX complain
@@ -433,11 +478,11 @@ void net_start(struct net_ctx *ctx) {
 
 void net_stop(struct net_ctx *ctx) {
     // create work item and enqueue
-    struct queue_item *stop_item = malloc(sizeof(struct queue_item));   
-    stop_item->type = QUEUE_TYPE_STOP;
-    stop_item->next = NULL;
+    struct queue_item *item = malloc(sizeof(struct queue_item));   
+    item->type = QUEUE_TYPE_STOP;
+    item->next = NULL;
 
-    net_enqueue_item(ctx, stop_item);
+    net_enqueue_item(ctx, item);
 
     // wait for worker thread to finish
     pthread_join(ctx->thread_id, NULL);
@@ -450,15 +495,15 @@ void net_make_listener(struct net_ctx *ctx, unsigned int port,
             void *cb_data), 
         void *cb_data) {
 
-    struct queue_item *listener_item = malloc(sizeof(struct queue_item));   
-    listener_item->type = QUEUE_TYPE_NEW_LISTENER;
-    listener_item->next = NULL;
-    listener_item->new_listener.port = port;
-    listener_item->new_listener.error_callback = error_callback;
-    listener_item->new_listener.accept_callback = accept_callback;
-    listener_item->new_listener.cb_data = cb_data;
+    struct queue_item *item = malloc(sizeof(struct queue_item));   
+    item->type = QUEUE_TYPE_NEW_LISTENER;
+    item->next = NULL;
+    item->new_listener.port = port;
+    item->new_listener.error_callback = error_callback;
+    item->new_listener.accept_callback = accept_callback;
+    item->new_listener.cb_data = cb_data;
 
-    net_enqueue_item(ctx, listener_item);
+    net_enqueue_item(ctx, item);
 }
 
 void net_shutdown_listener(struct net_ctx *ctx, unsigned int port) {
@@ -474,14 +519,19 @@ void net_socket_init(struct net_socket *s,
         void (*read_callback)(struct net_socket *s, void *buf, size_t size, void *cb_data),
         void (*closed_callback)(struct net_socket *s, void *cb_data),
         void *cb_data) {
-    s->read_callback = read_callback;
-    s->closed_callback = closed_callback;
-    s->cb_data = cb_data;
+    struct queue_item *item = malloc(sizeof(struct queue_item));   
+    item->type = QUEUE_TYPE_INIT_SOCKET;
+    item->next = NULL;
+    item->init_socket.socket = s;
+    item->init_socket.read_callback = read_callback;
+    item->init_socket.closed_callback = closed_callback;
+    item->init_socket.cb_data = cb_data;
 
-    ev_io_start(s->net_ctx->loop, &s->read_event);
+    net_enqueue_item(s->net_ctx, item);
 }
 
 void net_socket_close(struct net_socket *s) {
+    // XXX also needs to be passed to worker thread...
     pthread_mutex_lock(&s->socket_latch);
     shutdown(s->socket, SHUT_RDWR);
     close(s->socket);
@@ -500,19 +550,20 @@ void net_socket_free(struct net_socket *s) {
 }
 
 void net_socket_write(struct net_socket *s, void *buf, size_t size) {
-    pthread_mutex_lock(&s->socket_latch);
-    struct socket_buffer *sbuf = malloc(sizeof(struct socket_buffer));
-    sbuf->data = buf;
-    sbuf->size = size;
-    sbuf->level = 0;
-    sbuf->next = NULL;
-    if (s->last_buffer) {
-        s->last_buffer->next = sbuf;
-    }
-    s->last_buffer = sbuf;
-    if (!s->first_buffer) {
-        s->first_buffer = sbuf;
-        ev_io_start(s->net_ctx->loop, &s->write_event);
-    }
-    pthread_mutex_unlock(&s->socket_latch);
+    struct queue_item *item = malloc(sizeof(struct queue_item));   
+    item->type = QUEUE_TYPE_WRITE_SOCKET;
+    item->write_socket.socket = s;
+    item->write_socket.buf = buf;
+    item->write_socket.size = size;
+    item->next = NULL;
+
+    net_enqueue_item(s->net_ctx, item);
+}
+
+void net_socket_set_taskdata(struct net_socket *s, void *td) {
+    s->task_data = td;
+}
+
+void* net_socket_get_taskdata(struct net_socket *s) {
+    return s->task_data;
 }
