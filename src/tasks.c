@@ -9,16 +9,21 @@
 // -------- internal structures --------
 
 // XXX set to 1 for now, needs to be configurable later
-#define THREAD_COUNT        1
+#define THREAD_COUNT            1
 
-#define QUEUE_TYPE_STOP     0
-#define QUEUE_TYPE_INIT     1
-#define QUEUE_TYPE_ACCEPT   2
-#define QUEUE_TYPE_CLOSED   3
-#define QUEUE_TYPE_READ     4
+#define QUEUE_TYPE_STOP         0
+#define QUEUE_TYPE_INIT         1
+#define QUEUE_TYPE_ACCEPT       2
+#define QUEUE_TYPE_ACCEPT_ERROR 3
+#define QUEUE_TYPE_CLOSED       4
+#define QUEUE_TYPE_READ         5
 
 struct accept_data_info {
     struct net_socket *socket;
+};
+
+struct accept_error_data_info {
+    int errnum;
 };
 
 struct closed_data_info {
@@ -35,6 +40,7 @@ struct queue_item {
     int type;
     union {
         struct accept_data_info accept_data;
+        struct accept_error_data_info accept_error_data;
         struct closed_data_info closed_data;
         struct read_data_info read_data;
     };
@@ -104,9 +110,12 @@ void tasks_accept_cb(struct net_ctx *net, struct net_socket *socket, void *cb_da
     tasks_enqueue_item(ctx, item);
 }
 
-void tasks_accept_error_cb(int errnum) {
-    // XXX this one doesn't work very well as it has no cb_data
-    printf("# net accept error: %s\n", strerror(errnum));
+void tasks_accept_error_cb(int errnum, void *cb_data) {
+    struct tasks_ctx *ctx = (struct tasks_ctx*)cb_data;
+    struct queue_item *item = malloc(sizeof(struct queue_item));
+    item->type = QUEUE_TYPE_ACCEPT_ERROR;
+    item->accept_error_data.errnum = errnum;
+    tasks_enqueue_item(ctx, item);
 }
 
 void* tasks_thread_func(void *arg) {
@@ -140,6 +149,7 @@ void* tasks_thread_func(void *arg) {
             case QUEUE_TYPE_INIT:
             case QUEUE_TYPE_CLOSED:
             case QUEUE_TYPE_ACCEPT:
+            case QUEUE_TYPE_ACCEPT_ERROR:
                 // nothing to do
                 break;
             case QUEUE_TYPE_STOP:
@@ -175,6 +185,9 @@ void* tasks_thread_func(void *arg) {
                 break;
             case QUEUE_TYPE_ACCEPT:
                 net_socket_init(current_item->accept_data.socket, tasks_read_cb, tasks_closed_cb, ctx);
+                break;
+            case QUEUE_TYPE_ACCEPT_ERROR:
+                printf("Could not accept: %i\n", current_item->accept_error_data.errnum);
                 break;
             default:
                 printf("sdfdsffsd\n");

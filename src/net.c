@@ -24,7 +24,7 @@
 
 struct new_listener_info {
     int port;
-    void (*error_callback)(int errnum);
+    void (*error_callback)(int errnum, void *cb_data);
     void (*accept_callback)(struct net_ctx *ctx,
         struct net_socket *socket, void *cb_data);    
     void *cb_data;
@@ -260,7 +260,7 @@ void make_listener(struct net_ctx *ctx, struct new_listener_info *new_listener_r
     int lsock = socket(PF_INET, SOCK_STREAM, 0);
     if (lsock == -1) {
         if (new_listener_request->error_callback) {
-            new_listener_request->error_callback(errno);
+            new_listener_request->error_callback(errno, new_listener_request->cb_data);
         }
         return;
     }
@@ -271,14 +271,14 @@ void make_listener(struct net_ctx *ctx, struct new_listener_info *new_listener_r
     addr.sin_addr.s_addr = INADDR_ANY;
     if (bind(lsock, (struct sockaddr*) &addr, sizeof(addr)) == -1) {
         if (new_listener_request->error_callback) {
-            new_listener_request->error_callback(errno);
+            new_listener_request->error_callback(errno, new_listener_request->cb_data);
         }
         // XXX clean up socket
         return;
     }
     if (listen(lsock, SOMAXCONN) == -1) {
         if (new_listener_request->error_callback) {
-            new_listener_request->error_callback(errno);
+            new_listener_request->error_callback(errno, new_listener_request->cb_data);
         }
         // XXX clean up bind, socket
         return;
@@ -490,7 +490,7 @@ void net_stop(struct net_ctx *ctx) {
 
 // XXX may need an error callback as well
 void net_make_listener(struct net_ctx *ctx, unsigned int port, 
-        void (*error_callback)(int errnum),
+        void (*error_callback)(int errnum, void *cb_data),
 	    void (*accept_callback)(struct net_ctx *ctx, struct net_socket *socket, 
             void *cb_data), 
         void *cb_data) {
