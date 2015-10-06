@@ -1,9 +1,9 @@
 #ifndef EVAL_H
 #define EVAL_H
 
-#include <stdint.h>
-
+#include "defs.h"
 #include "types.h"
+#include "object.h"
 
 /* the virtual machine in CMOO uses a stack where elements can be accessed 
  * indexed as well. to do this we have a stack pointer SP, a frame pointer FB 
@@ -132,12 +132,23 @@
 
 // XXX more ops
 
-typedef uint8_t opcode;
-
 struct eval_ctx;
+struct exec_ctx;
 
 struct eval_ctx* eval_new_ctx(void);
 void eval_free_ctx(struct eval_ctx *ctx);
+
+// XXX two functions to actually run code in the vm: the first one is quick and creates 
+// an execution context from an eval_ctx and a objref. it "just" gets a locked version 
+// of the obj in question to make sure calls to evaluate are serialized properly. The 
+// second takes the exec_ctx and some arguments, and executes the code in question. this 
+// may take some time, cause I/O, lock, deadlock and what not...
+struct exec_ctx* eval_make_exec_ctx(struct eval_ctx *ctx, object_id oid);
+// the variadic part is num_args items of type "val", which get passed to the function
+// denoted by "method" on the object retrieved by "objref" on eval_make_exec_ctx.
+// This consumes the exec_ctx
+// XXX return value to signal success/error
+void exec_run(struct exec_ctx *ectx, val method, int num_args, ...);
 
 // set a callback that gets executed whenever OP_DEBUGI or OP_DEBUGR gets
 // executed, this mainly for testing. whenever the callback gets executed, the
@@ -145,10 +156,8 @@ void eval_free_ctx(struct eval_ctx *ctx);
 void eval_set_dbg_handler(struct eval_ctx *ctx, 
     void (*callback)(val v, void *a), 
     void *a);
-
-// XXX temporary clutch to allow direct execution of code without objects and the like
-// it may be a good idea to allow direct calls anyway! then each slot could have
-// sub-methods...
+// debug clutch to allow direct execution of code without objects and the like.
+// This is only used by test drivers and debug code, not by an actual CMOO server
 void eval_exec(struct eval_ctx *ctx, opcode *code);
 
 #endif /* EVAL_H */

@@ -121,7 +121,7 @@ struct net_socket {
                              // of red-black tree
 };
 
-// -------- internal utilities --------
+// -------- internal utility functions --------
 
 void net_enqueue_item(struct net_ctx *ctx, struct queue_item *item) {
     pthread_mutex_lock(&ctx->queue_latch);

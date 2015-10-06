@@ -6,10 +6,13 @@
 
 /* XXX in the longer run we should change the type tagging scheme so that
  * the lowest bits only indicate whether this is a non-immediate, and if 
- * so some indication of type, or whether it is an immediate, in which case  * the other 32bits can contain the payload and we have extra low bits to
+ * so some indication of type, or whether it is an immediate, in which case  
+ * * the other 32bits can contain the payload and we have extra low bits to
  * further differentiate. this would allow us to have far more types, which
  * would be good given that with hashes and arrays we will already run out
  * of type bits */
+
+// XXX all the shifts, shouldn't they be by 3???
 
 struct heap_string {
     uint16_t ref_count;
@@ -17,7 +20,7 @@ struct heap_string {
 };
 
 int val_type(val v) {
-    return v & 0x7;;
+    return v & 0x7;
 }
 
 val val_make_nil(void) {
@@ -49,6 +52,11 @@ val val_make_string(char *s) {
     uint64_t ret = (uint64_t)hs;
     ret |= TYPE_STRING;
     return ret;
+}
+
+val val_make_objref(object_id ref) {
+    assert(ref < 0x010000000000);
+    return (ref << 4) | TYPE_OBJREF;
 }
 
 void val_inc_ref(val v) {
@@ -102,4 +110,9 @@ char* val_get_string(val v) {
     assert((v & 0x7) == TYPE_STRING);
     struct heap_string *hs = (struct heap_string*)((uint64_t)v & (~0x7));
     return hs->data;
+}
+
+object_id val_get_objref(val v) {
+    assert((v & 0x7) == TYPE_OBJREF);
+    return v >> 4;
 }

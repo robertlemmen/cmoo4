@@ -1,8 +1,9 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <stdint.h>
 #include <stdbool.h>
+
+#include "defs.h"
 
 /* cmoo is a dynamic language, so types are associated with values rather 
  * than with variables. we differ between immediate values where the whole
@@ -23,8 +24,6 @@
 #define TYPE_OBJREF     5
 #define TYPE_SPECIAL    6
 
-typedef uint64_t val;
-
 /* this returns the type of a value */
 int val_type(val v);
 
@@ -34,6 +33,7 @@ val val_make_bool(bool i);
 val val_make_int(int i);
 val val_make_float(float i);
 val val_make_string(char *s); // copies, does not consume argument
+val val_make_objref(object_id ref);
 // XXX more creators
 
 /* sets the value pointed to to NIL and runs cleanups for non-immediates
@@ -42,6 +42,9 @@ void val_clear(val *v);
 /* also set to NIL, but performs no cleanups */
 void val_init(val *v);
 
+/* non-intermediates do reference counting to check when the heap needs
+ * to be cleared up. with the functions below you can affect the counter
+ * if you copy "val" items around */
 void val_inc_ref(val v);
 void val_dec_ref(val v);
 
@@ -50,7 +53,9 @@ bool val_get_bool(val v);
 int val_get_int(val v);
 float val_get_float(val v);
 char* val_get_string(val v);
+object_id val_get_objref(val v);
 // XXX more getters
 
+// serialize/deserialize type
 
 #endif /* TYPES_H */

@@ -1,10 +1,12 @@
 #include "check_types.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "types.h"
 
 START_TEST(test_types_01) {
+    printf("  test_types_01...\n");
     val v;
 
     v = val_make_nil();
@@ -31,10 +33,15 @@ START_TEST(test_types_01) {
     ck_assert(val_type(v) == TYPE_FLOAT);
     ck_assert(abs(val_get_float(v) - 3.1415) < 0.00001);
 
+    v = val_make_objref(1234567);
+    ck_assert(val_type(v) == TYPE_OBJREF);
+    ck_assert(val_get_objref(v) == 1234567);
+
 }
 END_TEST
 
 START_TEST(test_types_02) {
+    printf("  test_types_02...\n");
     val v;
 
     char *in1 = "test234";

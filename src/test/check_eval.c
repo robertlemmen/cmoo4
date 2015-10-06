@@ -36,6 +36,7 @@ void eval_debug_callback(val v, void *a) {
 }
 
 START_TEST(test_eval_01) {
+    printf("  test_eval_01...\n");
     struct eval_ctx *ex = eval_new_ctx();
  
     char trace[4096];
@@ -70,6 +71,7 @@ START_TEST(test_eval_01) {
 END_TEST
 
 START_TEST(test_eval_02) {
+    printf("  test_eval_02...\n");
     struct eval_ctx *ex = eval_new_ctx();
  
     char trace[4096];
@@ -111,6 +113,7 @@ START_TEST(test_eval_02) {
 END_TEST
 
 START_TEST(test_eval_03) {
+    printf("  test_eval_03...\n");
     struct eval_ctx *ex = eval_new_ctx();
  
     char trace[4096];
@@ -146,6 +149,7 @@ START_TEST(test_eval_03) {
 END_TEST
 
 START_TEST(test_eval_04) {
+    printf("  test_eval_04...\n");
     struct eval_ctx *ex = eval_new_ctx();
  
     char trace[4096];
@@ -184,6 +188,7 @@ START_TEST(test_eval_04) {
 END_TEST
 
 START_TEST(test_eval_05) {
+    printf("  test_eval_05...\n");
     struct eval_ctx *ex = eval_new_ctx();
  
     char trace[4096];
@@ -224,6 +229,7 @@ START_TEST(test_eval_05) {
 END_TEST
 
 START_TEST(test_eval_06) {
+    printf("  test_eval_06...\n");
     struct eval_ctx *ex = eval_new_ctx();
 
     char trace[4096];
@@ -260,6 +266,7 @@ START_TEST(test_eval_06) {
 END_TEST
 
 START_TEST(test_eval_07) {
+    printf("  test_eval_07...\n");
     struct eval_ctx *ex = eval_new_ctx();
 
     char trace[4096];
@@ -304,6 +311,7 @@ START_TEST(test_eval_07) {
 END_TEST
 
 START_TEST(test_eval_08) {
+    printf("  test_eval_08...\n");
     struct eval_ctx *ex = eval_new_ctx();
 
     char trace[4096];
