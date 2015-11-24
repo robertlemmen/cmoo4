@@ -160,6 +160,10 @@ void* tasks_thread_func(void *arg) {
                 // we need to call into the vm to make sure the socket structure is
                 // locked before exiting this global lock, otehrwise
                 // two messages coming in on the same socket could switch order
+                // XXX for now we just echo here, but really we need to create a
+                // execution context from VM in ths place, and then do the actual 
+                // execution below. for this we need to have a object reference
+                // associated with the socket
                 struct ntx_tx *tx = ntx_new_tx(ctx->ntx);
                 ntx_socket_write(tx, current_item->read_data.socket, 
                     current_item->read_data.buf, current_item->read_data.size);
