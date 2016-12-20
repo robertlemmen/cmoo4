@@ -9,25 +9,25 @@
 
 struct ntx_ctx *ntx = NULL;
 struct tasks_ctx *tasks = NULL;
+struct vm *vm = NULL;
 
 void net_init_cb(struct net_ctx *net) {
     printf("# net init callback\n");
 
     ntx = ntx_new_ctx(net);
-    tasks = tasks_new_ctx(net, ntx);
+    tasks = tasks_new_ctx(net, ntx, vm);
     tasks_start(tasks);
 }
 
 int main(int argc, char **argv) {
     printf("-=[ CMOO ]=-\n");
 
-    struct vm *vm = vm_new();
+    vm = vm_new();
     struct net_ctx *net = net_new_ctx(net_init_cb);
     net_start(net);
 
     sleep(10);
 
-    net_shutdown_listener(net, 12345);
     net_stop(net);
     tasks_stop(tasks);
     tasks_free_ctx(tasks);

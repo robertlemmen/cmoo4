@@ -24,10 +24,12 @@
 
 struct new_listener_info {
     int port;
-    void (*error_callback)(int errnum, void *cb_data);
-    void (*accept_callback)(struct net_ctx *ctx,
-        struct net_socket *socket, void *cb_data);    
-    void *cb_data;
+    void (*error_callback)(int errnum,
+        void *cb_data1, void *cb_data2);
+    void (*accept_callback)(struct net_ctx *ctx, struct net_socket *socket,
+        void *cb_data1, void *cb_data2);
+    void *cb_data1;
+    void *cb_data2;
 };
 
 struct stop_listener_info {
@@ -40,9 +42,12 @@ struct free_socket_info {
 
 struct init_socket_info {
     struct net_socket *socket;
-    void (*read_callback)(struct net_socket *s, void *buf, size_t size, void *cb_data);
-    void (*closed_callback)(struct net_socket *s, void *cb_data);
-    void *cb_data;
+    void (*read_callback)(struct net_socket *s, void *buf, size_t size,
+        void *cb_data1, void *cb_data2);
+    void (*closed_callback)(struct net_socket *s,
+        void *cb_data1, void *cb_data2);
+    void *cb_data1;
+    void *cb_data2;
 };
 
 struct write_socket_info {
@@ -69,9 +74,10 @@ struct listener_ctx {
     int port;
     struct ev_io accept_event;
     struct net_ctx *net_ctx;
-    void (*accept_callback)(struct net_ctx *ctx,
-        struct net_socket *socket, void *cb_data);
-    void *cb_data;
+    void (*accept_callback)(struct net_ctx *ctx, struct net_socket *socket,
+        void *cb_data1, void *cb_data2);
+    void *cb_data1;
+    void *cb_data2;
     struct listener_ctx *next;
 };
 
@@ -102,10 +108,13 @@ struct net_socket {
     int socket; // XXX "fd"?
     int refcount;
     struct net_ctx *net_ctx;
-    
-    void (*read_callback)(struct net_socket *s, void *buf, size_t size, void *cb_data);
-    void (*closed_callback)(struct net_socket *s, void *cb_data);
-    void *cb_data;
+
+    void (*read_callback)(struct net_socket *s, void *buf, size_t size,
+        void *cb_data1, void *cb_data2);
+    void (*closed_callback)(struct net_socket *s,
+        void *cb_data1, void *cb_data2);
+    void *cb_data1;
+    void *cb_data2;
 
     ev_io read_event;
     ev_io write_event;
@@ -140,7 +149,7 @@ void net_enqueue_item(struct net_ctx *ctx, struct queue_item *item) {
 void net_socket_dec_refcount(struct net_socket *s) {
     s->refcount--;
     if (s->refcount == 0) {
-        struct queue_item *item = malloc(sizeof(struct queue_item));   
+        struct queue_item *item = malloc(sizeof(struct queue_item));
         item->type = QUEUE_TYPE_FREE_SOCKET;
         item->next = NULL;
         item->free_socket.socket = s;
@@ -181,7 +190,7 @@ void net_read_cb(struct ev_loop *loop, ev_io *watcher, int revents) {
         }
         socket->socket = 0;
         if (socket->closed_callback) {
-            socket->closed_callback(socket, socket->cb_data);
+            socket->closed_callback(socket, socket->cb_data1, socket->cb_data2);
         }
         net_socket_dec_refcount(socket);
     }
@@ -189,7 +198,7 @@ void net_read_cb(struct ev_loop *loop, ev_io *watcher, int revents) {
         if (socket->read_callback) {
             char *nbuf = malloc(count);
             memcpy(nbuf, buf, count);
-            socket->read_callback(socket, nbuf, count, socket->cb_data);
+            socket->read_callback(socket, nbuf, count, socket->cb_data1, socket->cb_data2);
         }
     }
 }
@@ -197,8 +206,8 @@ void net_read_cb(struct ev_loop *loop, ev_io *watcher, int revents) {
 void net_write_cb(struct ev_loop *loop, ev_io *watcher, int revents) {
     struct net_socket *socket = (struct net_socket*)watcher->data;
     pthread_mutex_lock(&socket->socket_latch);
-    ssize_t count = write(watcher->fd, 
-        (unsigned char*)socket->first_buffer->data + socket->first_buffer->level, 
+    ssize_t count = write(watcher->fd,
+        (unsigned char*)socket->first_buffer->data + socket->first_buffer->level,
         socket->first_buffer->size - socket->first_buffer->level);
     if (count < 0) {
         printf("error on write\n");
@@ -240,7 +249,8 @@ void net_accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     }
     nsock->read_callback = NULL;
     nsock->closed_callback = NULL;
-    nsock->cb_data = NULL;
+    nsock->cb_data1 = NULL;
+    nsock->cb_data2 = NULL;
     ev_io_init(&nsock->read_event, net_read_cb, nsock->socket, EV_READ);
     nsock->read_event.data = nsock;
     ev_io_init(&nsock->write_event, net_write_cb, nsock->socket, EV_WRITE);
@@ -252,7 +262,7 @@ void net_accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     nsock->next = lctx->net_ctx->open_sockets;
     lctx->net_ctx->open_sockets = nsock;
 
-    lctx->accept_callback(lctx->net_ctx, nsock, lctx->cb_data);
+    lctx->accept_callback(lctx->net_ctx, nsock, lctx->cb_data1, lctx->cb_data2);
 }
 
 void make_listener(struct net_ctx *ctx, struct new_listener_info *new_listener_request) {
@@ -260,8 +270,14 @@ void make_listener(struct net_ctx *ctx, struct new_listener_info *new_listener_r
     int lsock = socket(PF_INET, SOCK_STREAM, 0);
     if (lsock == -1) {
         if (new_listener_request->error_callback) {
-            new_listener_request->error_callback(errno, new_listener_request->cb_data);
+            new_listener_request->error_callback(errno,
+                new_listener_request->cb_data1, new_listener_request->cb_data2);
         }
+        return;
+    }
+    int sock_opt = 1;
+    if (setsockopt(lsock, SOL_SOCKET, SO_REUSEADDR, &sock_opt, sizeof(int)) == -1) {
+        // XXX clean up socket
         return;
     }
     struct sockaddr_in addr;
@@ -271,26 +287,29 @@ void make_listener(struct net_ctx *ctx, struct new_listener_info *new_listener_r
     addr.sin_addr.s_addr = INADDR_ANY;
     if (bind(lsock, (struct sockaddr*) &addr, sizeof(addr)) == -1) {
         if (new_listener_request->error_callback) {
-            new_listener_request->error_callback(errno, new_listener_request->cb_data);
+            new_listener_request->error_callback(errno,
+                new_listener_request->cb_data1, new_listener_request->cb_data2);
         }
         // XXX clean up socket
         return;
     }
     if (listen(lsock, SOMAXCONN) == -1) {
         if (new_listener_request->error_callback) {
-            new_listener_request->error_callback(errno, new_listener_request->cb_data);
+            new_listener_request->error_callback(errno,
+                new_listener_request->cb_data1, new_listener_request->cb_data2);
         }
         // XXX clean up bind, socket
         return;
     }
-    
+
     // create structure for this listener and store in context
     struct listener_ctx *lctx = malloc(sizeof(struct listener_ctx));
     memset(lctx, 0, sizeof(struct listener_ctx));
     lctx->port = new_listener_request->port;
     lctx->net_ctx = ctx;
     lctx->accept_callback = new_listener_request->accept_callback;
-    lctx->cb_data = new_listener_request->cb_data;
+    lctx->cb_data1 = new_listener_request->cb_data1;
+    lctx->cb_data2 = new_listener_request->cb_data2;
     // put into ctx
     lctx->next = ctx->listeners;
     ctx->listeners = lctx;
@@ -336,8 +355,8 @@ void queue_event_callback(struct ev_loop *loop, struct ev_async *w, int revents)
                         else {
                             ctx->listeners = current_listener->next;
                         }
-                        free(current_listener); 
-                        
+                        free(current_listener);
+
                         break;
                     }
                     // advance
@@ -358,7 +377,7 @@ void queue_event_callback(struct ev_loop *loop, struct ev_async *w, int revents)
                             ctx->open_sockets = current_socket->next;
                         }
                         net_free_socket(current_socket);
-                        
+
                         break;
                     }
                     // advance
@@ -370,7 +389,8 @@ void queue_event_callback(struct ev_loop *loop, struct ev_async *w, int revents)
                 struct net_socket *socket = current_item->init_socket.socket;
                 socket->read_callback = current_item->init_socket.read_callback;
                 socket->closed_callback = current_item->init_socket.closed_callback;
-                socket->cb_data = current_item->init_socket.cb_data;
+                socket->cb_data1 = current_item->init_socket.cb_data1;
+                socket->cb_data2 = current_item->init_socket.cb_data2;
                 ev_io_start(socket->net_ctx->loop, &socket->read_event);
                 break;
             case QUEUE_TYPE_WRITE_SOCKET:;
@@ -453,7 +473,7 @@ void net_free_ctx(struct net_ctx *ctx) {
         }
 
         net_free_socket(temp_socket);
-            
+
     }
     // clean up listeners
     struct listener_ctx *current_listener = ctx->listeners;
@@ -478,7 +498,7 @@ void net_start(struct net_ctx *ctx) {
 
 void net_stop(struct net_ctx *ctx) {
     // create work item and enqueue
-    struct queue_item *item = malloc(sizeof(struct queue_item));   
+    struct queue_item *item = malloc(sizeof(struct queue_item));
     item->type = QUEUE_TYPE_STOP;
     item->next = NULL;
 
@@ -488,26 +508,26 @@ void net_stop(struct net_ctx *ctx) {
     pthread_join(ctx->thread_id, NULL);
 }
 
-// XXX may need an error callback as well
-void net_make_listener(struct net_ctx *ctx, unsigned int port, 
-        void (*error_callback)(int errnum, void *cb_data),
-	    void (*accept_callback)(struct net_ctx *ctx, struct net_socket *socket, 
-            void *cb_data), 
-        void *cb_data) {
+void net_make_listener(struct net_ctx *ctx, unsigned int port,
+        void (*error_callback)(int errnum, void *cb_data1, void *cb_data2),
+	    void (*accept_callback)(struct net_ctx *ctx, struct net_socket *socket,
+            void *cb_data1, void *cb_data2),
+        void *cb_data1, void *cb_data2) {
 
-    struct queue_item *item = malloc(sizeof(struct queue_item));   
+    struct queue_item *item = malloc(sizeof(struct queue_item));
     item->type = QUEUE_TYPE_NEW_LISTENER;
     item->next = NULL;
     item->new_listener.port = port;
     item->new_listener.error_callback = error_callback;
     item->new_listener.accept_callback = accept_callback;
-    item->new_listener.cb_data = cb_data;
+    item->new_listener.cb_data1 = cb_data1;
+    item->new_listener.cb_data2 = cb_data2;
 
     net_enqueue_item(ctx, item);
 }
 
 void net_shutdown_listener(struct net_ctx *ctx, unsigned int port) {
-    struct queue_item *listener_item = malloc(sizeof(struct queue_item));   
+    struct queue_item *listener_item = malloc(sizeof(struct queue_item));
     listener_item->type = QUEUE_TYPE_STOP_LISTENER;
     listener_item->next = NULL;
     listener_item->stop_listener.port = port;
@@ -515,17 +535,20 @@ void net_shutdown_listener(struct net_ctx *ctx, unsigned int port) {
     net_enqueue_item(ctx, listener_item);
 }
 
-void net_socket_init(struct net_socket *s, 
-        void (*read_callback)(struct net_socket *s, void *buf, size_t size, void *cb_data),
-        void (*closed_callback)(struct net_socket *s, void *cb_data),
-        void *cb_data) {
-    struct queue_item *item = malloc(sizeof(struct queue_item));   
+void net_socket_init(struct net_socket *s,
+        void (*read_callback)(struct net_socket *s, void *buf, size_t size,
+            void *cb_data1, void *cb_data2),
+        void (*closed_callback)(struct net_socket *s,
+            void *cb_data1, void *cb_data2),
+        void *cb_data1, void *cb_data2) {
+    struct queue_item *item = malloc(sizeof(struct queue_item));
     item->type = QUEUE_TYPE_INIT_SOCKET;
     item->next = NULL;
     item->init_socket.socket = s;
     item->init_socket.read_callback = read_callback;
     item->init_socket.closed_callback = closed_callback;
-    item->init_socket.cb_data = cb_data;
+    item->init_socket.cb_data1 = cb_data1;
+    item->init_socket.cb_data2 = cb_data2;
 
     net_enqueue_item(s->net_ctx, item);
 }
@@ -550,7 +573,7 @@ void net_socket_free(struct net_socket *s) {
 }
 
 void net_socket_write(struct net_socket *s, void *buf, size_t size) {
-    struct queue_item *item = malloc(sizeof(struct queue_item));   
+    struct queue_item *item = malloc(sizeof(struct queue_item));
     item->type = QUEUE_TYPE_WRITE_SOCKET;
     item->write_socket.socket = s;
     item->write_socket.buf = buf;

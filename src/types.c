@@ -59,6 +59,12 @@ val val_make_objref(object_id ref) {
     return (ref << 4) | TYPE_OBJREF;
 }
 
+val val_make_special(void *special) {
+    // XXX this needs some protection against sizeof(void*) != sizeof(uint64_t)
+    assert(((uint64_t)special & 0x7) == 0);
+    return (uint64_t)special | TYPE_SPECIAL;
+}
+
 void val_inc_ref(val v) {
     if (((uint64_t)v & 0x7) == TYPE_STRING) {
         struct heap_string *hs = (struct heap_string*)((uint64_t)v & (~0x7));
@@ -115,4 +121,8 @@ char* val_get_string(val v) {
 object_id val_get_objref(val v) {
     assert((v & 0x7) == TYPE_OBJREF);
     return v >> 4;
+}
+
+void* val_get_special(val v) {
+    return (void*)((uint64_t)v & (~0x07));
 }

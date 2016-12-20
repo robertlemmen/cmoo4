@@ -34,6 +34,8 @@ val val_make_int(int i);
 val val_make_float(float i);
 val val_make_string(char *s); // copies, does not consume argument
 val val_make_objref(object_id ref);
+// XXX we need a way to tell the different specials apart
+val val_make_special(void *special);
 // XXX more creators
 
 /* sets the value pointed to to NIL and runs cleanups for non-immediates
@@ -54,6 +56,7 @@ int val_get_int(val v);
 float val_get_float(val v);
 char* val_get_string(val v);
 object_id val_get_objref(val v);
+void* val_get_special(val v);
 // XXX more getters
 
 // serialize/deserialize type

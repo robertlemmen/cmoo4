@@ -3,25 +3,25 @@ C M O O   T O D O
 
 next main jobs
 --------------
-- current opcodes support for strings
-- call/return, requires stub object stuff
-- getglobal/setglobal stubs
+- vm pseudo-core to fetch objects and lock them, but still use the pseudo-core
+  for actual execution
+  - stub locking
+  - stub persistence 
+- eval work and assembler to allow echo server in actual bytecode
+  - current opcodes support for strings
+  - call/return, requires stub object stuff
+  - getglobal/setglobal stubs
 
-- networking and network tx, towards single-thread ops at the moment
-- task system that build on top of eval and suspends evaluation (single-threaded)
-
-- stub locking
-- stub persistence 
 -> very basic, single-threaded "echo" type server
 
 after basic case works
 ----------------------
+- support for multiple threads
 - hashes/arrays
 - div/idiv/mod
 - jump_eq, jump_ne, jump_le, jump_lt
 - floats
 - inc/dec calls for ints
-- support for multiple threads
 
 non-code
 --------

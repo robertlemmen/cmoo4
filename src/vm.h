@@ -19,8 +19,8 @@ void vm_free(struct vm *v);
 // XXX needs task id or so to make sure older younger threads get faulted 
 // out of deadlocks
 // XXX vm also needs link to net/ntx
-struct eval_ctx* vm_get_eval_ctx(struct vm *v, object_id id);
+struct eval_ctx* vm_get_eval_ctx(struct vm *v, object_id id, uint64_t task_id);
 // XXX missing arguments for slot to call and arguments
-void vm_eval_ctx_exec(struct eval_ctx *ex);
+void vm_eval_ctx_exec(struct eval_ctx *ex, val method, int num_args, ...);
 
 #endif /* VM_H */

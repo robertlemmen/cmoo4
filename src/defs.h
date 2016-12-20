@@ -18,7 +18,7 @@ typedef uint8_t opcode;
  * */
 typedef uint64_t object_id;
 
-/* representation of the non-heap part of a value, see val.h for accessors
+/* representation of the non-heap part of a value, see types.h for accessors
  * and details 
  * */
 typedef uint64_t val;
