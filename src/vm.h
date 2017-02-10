@@ -12,8 +12,9 @@
 
 struct vm;
 struct eval_ctx;
+struct store;
 
-struct vm* vm_new(void);
+struct vm* vm_new(struct store *s);
 void vm_free(struct vm *v);
 
 // XXX needs task id or so to make sure older younger threads get faulted 

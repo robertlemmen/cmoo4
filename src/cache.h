@@ -9,15 +9,9 @@
  * not do any locking itself, and needs to be wrapped if concurrent access is 
  * required */
 
-// XXX how do we link objects and locks? have an object wrapper? or put the 
-// locks inside objects? We could make this more generic by providing a 
-// item_free() callback that is used when an item is purged from the cache, and
-// just using void* or create a locked_object which wraps the object, optional source
-// and the locks into one thing, which is then used in here
-
 struct cache;
 
-struct cache* cache_new(int size);
+struct cache* cache_new(int initial_size);
 void cache_free(struct cache *c);
 
 // get object from cache, increase refcount by one. you need to release() the object

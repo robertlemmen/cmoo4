@@ -9,6 +9,8 @@
  * attempt */
 
 // XXX upgrade to excl/shared lock
+// XXX non-blocking access should allow async callback, which is tricky around race
+// conditions
 
 #define LOCK_FREE       0
 #define LOCK_RESERVED   1

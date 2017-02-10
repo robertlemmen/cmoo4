@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 // XXX this is a stub that does not lru-purge and that is based
 // on a small static vector instead of a search tree. only to get simple
@@ -29,13 +30,15 @@ void cache_free(struct cache *c) {
 
 struct lobject* cache_get_object(struct cache *c, object_id id) {
     struct lobject *ret = c->objects[id];
-    // XXX check id matches expected
+    assert(ret != NULL);
+    assert(obj_get_id(lobject_get_object(ret)) == id);
     return ret;
 }
 
 void cache_put_object(struct cache *c, struct lobject *o) {
     // XXX check for collision
     object_id id = obj_get_id(lobject_get_object(o));
+    assert(c->objects[id] == NULL);
     c->objects[id] = o;
 }
 

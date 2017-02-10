@@ -6,6 +6,7 @@
 #include "ntx.h"
 #include "tasks.h"
 #include "vm.h"
+#include "store.h"
 
 struct ntx_ctx *ntx = NULL;
 struct tasks_ctx *tasks = NULL;
@@ -22,7 +23,8 @@ void net_init_cb(struct net_ctx *net) {
 int main(int argc, char **argv) {
     printf("-=[ CMOO ]=-\n");
 
-    vm = vm_new();
+    struct store *store = store_new();   
+    vm = vm_new(store);
     struct net_ctx *net = net_new_ctx(net_init_cb);
     net_start(net);
 
@@ -34,6 +36,7 @@ int main(int argc, char **argv) {
     ntx_free_ctx(ntx);
     net_free_ctx(net);
     vm_free(vm);
+    store_free(store);
 
     return 0;
 }
