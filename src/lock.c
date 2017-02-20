@@ -4,6 +4,42 @@
 #include <stdio.h>
 #include <pthread.h>
 
+// XXX stub, we want to be fair and detect deadlocks!
+
+// -------- implementation of declared public structures --------
+
+struct lock {
+    pthread_mutex_t latch;
+};
+
+// -------- implementation of public functions --------
+
+struct lock* lock_new(void) {
+    struct lock *ret = malloc(sizeof(struct lock));
+    if (pthread_mutex_init(&ret->latch, NULL) != 0) {
+        fprintf(stderr, "pthread_mutex_init failed\n");
+        exit(1);
+    }
+    return ret;
+}
+
+void lock_free(struct lock *l) {
+    // XXX make sure it's not locked, and that there is noone waiting
+    pthread_mutex_destroy(&l->latch);
+    free(l);
+}
+
+int lock_lock(struct lock *l) {
+    pthread_mutex_lock(&l->latch);
+    return LOCK_TAKEN;
+}
+
+void lock_unlock(struct lock *l) {
+    pthread_mutex_unlock(&l->latch);
+}
+
+/* old implementation, remove once happy with new one 
+
 // XXX this is a stub, it does not detect deadlocks at this point, and does
 // not allow shared/exclusive access
 
@@ -140,3 +176,4 @@ void lock_reservation_unlock(struct lock_reservation *lr) {
     lock_unlock(lr->l);
     free(lr);
 }
+*/

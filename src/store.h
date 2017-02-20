@@ -2,6 +2,7 @@
 #define STORE_H
 
 #include "defs.h"
+#include "persist.h"
 
 /* this store sits on top of a persistent backend and allows concurrent access
  * to object. The objects are cached, and the store manages locks against the
@@ -14,7 +15,7 @@
 struct store;
 struct store_tx;
 
-struct store* store_new(void);
+struct store* store_new(struct persist *p);
 void store_free(struct store *s);
 
 /* strta/finish a transaction, you need to explicitely finish a transaction even 

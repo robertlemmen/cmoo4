@@ -23,7 +23,8 @@ void net_init_cb(struct net_ctx *net) {
 int main(int argc, char **argv) {
     printf("-=[ CMOO ]=-\n");
 
-    struct store *store = store_new();   
+    struct persist *persist = persist_new();
+    struct store *store = store_new(persist);
     vm = vm_new(store);
     struct net_ctx *net = net_new_ctx(net_init_cb);
     net_start(net);
@@ -37,6 +38,7 @@ int main(int argc, char **argv) {
     net_free_ctx(net);
     vm_free(vm);
     store_free(store);
+    persist_free(persist);
 
     return 0;
 }
