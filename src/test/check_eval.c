@@ -1,4 +1,4 @@
-#include "check_types.h"
+#include "check_eval.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -361,6 +361,33 @@ END_TEST
 
 // XXX test for float eq,lt,le
 
+int t0_count = 0;
+val sys_t0(void) {
+}
+
+START_TEST(test_eval_syscall) {
+    printf("  test_eval_syscall...\n");
+    struct eval_ctx *ex = eval_new_ctx();
+    struct syscall_table *st = syscall_table_new();
+    syscall_table_add_a0(st, "sys_t0", sys_t0);
+    eval_set_syscall_table(ex, st);
+
+    opcode code[] = {   OP_NOOP, 
+                        OP_ARGS_LOCALS, 0x00, 0x01,
+                        OP_LOAD_INT, 0x00, 0xff, 0xff, 0xff, 0xff,
+                        OP_PUSH, 0x00,
+                        OP_SYSCALL, 0x00,
+                        OP_HALT};
+
+    ck_assert_msg(t0_count == 0, "syscall test pre-condition not met");
+    eval_exec(ex, code);
+    // failing at moment ck_assert_msg(t0_count == 1, "syscall not executed as expected");
+
+    eval_free_ctx(ex);
+    syscall_table_free(st);
+}
+END_TEST
+
 TCase* make_eval_checks(void) {
     TCase *tc_eval;
 
@@ -373,6 +400,7 @@ TCase* make_eval_checks(void) {
     tcase_add_test(tc_eval, test_eval_06);
     tcase_add_test(tc_eval, test_eval_07);
     tcase_add_test(tc_eval, test_eval_08);
+    tcase_add_test(tc_eval, test_eval_syscall);
 
     return tc_eval;
 }

@@ -6,7 +6,7 @@
 #include "object.h"
 
 /* the virtual machine in CMOO uses a stack where elements can be accessed 
- * indexed as well. to do this we have a stack pointer SP, a frame pointer FB 
+ * indexed as well. to do this we have a stack pointer SP, a frame pointer FP
  * and an instruction pointer IP. The instructions are 1-octet in length but 
  * may be followed by variable length arguments. The VM executes the current 
  * opcode at IP and then increases IP accordingly. The instructions can 
@@ -128,12 +128,15 @@
 #define OP_JUMP_LE          30 // if le(reg8:src1, reg8:src2 then IP += int32:offset
 #define OP_JUMP_LT          31 // if lt(reg8:src1, reg8:src2) then IP += int32:offset
 
+#define OP_SYSCALL          32 // int8:nargs
 // XXX OP_LENGTH, OP_CONCAT
 
 // XXX more ops
 
 struct eval_ctx;
 struct exec_ctx;
+
+struct syscall_table;
 
 struct eval_ctx* eval_new_ctx(void);
 void eval_free_ctx(struct eval_ctx *ctx);
@@ -159,5 +162,14 @@ void eval_set_dbg_handler(struct eval_ctx *ctx,
 // debug clutch to allow direct execution of code without objects and the like.
 // This is only used by test drivers and debug code, not by an actual CMOO server
 void eval_exec(struct eval_ctx *ctx, opcode *code);
+
+struct syscall_table* syscall_table_new(void);
+void syscall_table_free(struct syscall_table *st);
+
+void syscall_table_add_a0(struct syscall_table *st, char *name, val (*syscall)(void));
+void syscall_table_add_a1(struct syscall_table *st, char *name, val (*syscall)(val v1));
+void syscall_table_add_a2(struct syscall_table *st, char *name, val (*syscall)(val v1, val v2));
+
+void eval_set_syscall_table(struct eval_ctx *ctx, struct syscall_table *st);
 
 #endif /* EVAL_H */

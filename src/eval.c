@@ -15,6 +15,21 @@ union stack_element {
     opcode *code;
 };
 
+struct syscall_entry {
+    uint8_t arity;
+    char *name;
+    union syscall_arity {
+        val (*a0)(void);
+        val (*a1)(val v1);
+        val (*a2)(val v1, val v2);
+    } funcptr;
+    struct syscall_entry *next;
+};
+
+struct syscall_table {
+    struct syscall_entry *syscalls;
+};
+
 struct eval_ctx {
     // our base registers
     union stack_element *fp;
@@ -25,6 +40,8 @@ struct eval_ctx {
     // debug handler
     void (*callback)(val v, void *a);
     void *cb_arg;
+    // syscall table
+    struct syscall_table *syscall_table;
 };
 
 struct eval_ctx* eval_new_ctx(void) {
@@ -87,7 +104,8 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         &&do_jump_eq,
         &&do_jump_ne,
         &&do_jump_le,
-        &&do_jump_lt
+        &&do_jump_lt,
+        &&do_syscall,
     };
     #define DISPATCH() goto *dispatch_table[*ip++]
 
@@ -151,6 +169,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         do_push: {
             uint8_t src = *((uint8_t*)ip);
             ip += 1;
+            printf("| PUSH r0x%02X                       |\n", src);
             if (&ctx->fp[src] > ctx->sp) {
                 // XXX raise
                 printf("!! access to reg outside stack\n");
@@ -659,5 +678,37 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         do_jump_lt: {
             DISPATCH();
         }
+        do_syscall: {
+            uint8_t nargs = *((uint8_t*)ip);
+            ip += 1;
+            printf("| SYSCALL %-4i                     |\n", nargs);
+            // XXX determine args and system call name
+            // XXX call it
+            DISPATCH();
+        }
     }
+}
+
+struct syscall_table* syscall_table_new(void) {
+    struct syscall_table *ret = malloc(sizeof(struct syscall_table));
+    ret->syscalls = NULL;
+    return ret;
+}
+
+void syscall_table_free(struct syscall_table *st) {
+    // XXX free the entries
+    free(st);
+}
+
+void syscall_table_add_a0(struct syscall_table *st, char *name, val (*syscall)(void)) {
+}
+
+void syscall_table_add_a1(struct syscall_table *st, char *name, val (*syscall)(val v1)) {
+}
+
+void syscall_table_add_a2(struct syscall_table *st, char *name, val (*syscall)(val v1, val v2)) {
+}
+
+void eval_set_syscall_table(struct eval_ctx *ctx, struct syscall_table *st) {
+    ctx->syscall_table = st;
 }
