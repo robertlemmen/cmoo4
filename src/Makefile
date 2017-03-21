@@ -34,7 +34,7 @@ clean:
 		$(MAKE) -C $$dir clean; \
 	done
 
-check: $(OBJECTS) $(SUBDIRS)
+test check: $(OBJECTS) $(SUBDIRS)
 	make -C test check
 
 -include *.d

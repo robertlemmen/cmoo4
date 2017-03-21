@@ -4,6 +4,7 @@
 #include "check_types.h"
 #include "check_eval.h"
 #include "check_object.h"
+#include "check_cache.h"
 
 int main(int argc, char **argv) {
     Suite *s = suite_create("CMOO");
@@ -11,6 +12,7 @@ int main(int argc, char **argv) {
     suite_add_tcase(s, make_types_checks());
     suite_add_tcase(s, make_eval_checks());
     suite_add_tcase(s, make_object_checks());
+    suite_add_tcase(s, make_cache_checks());
 
     SRunner *sr = srunner_create(s);
     srunner_run_all(sr, CK_NORMAL);
