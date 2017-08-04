@@ -29,4 +29,7 @@ void store_finish_tx(struct store_tx *tx);
 // not: no-such-object should never happen and would be fatal as well..
 struct object* store_get_object(struct store_tx *tx, object_id oid);
 
+// XXX we need a way to write to an object, but only have the writable copy in the TX
+// until comitted
+
 #endif /* STORE_H */

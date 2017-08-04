@@ -2,8 +2,8 @@
 
 #include <stdlib.h>
 
-// XXX this is a stub, not actually going to disk. single-linbked-list
-// is also about the worst possible data structure...
+// XXX this is a stub, not actually going to disk. single-linked-list
+// is also about the worst possible data structure for this
 
 struct object_list_node {
     struct object *object;

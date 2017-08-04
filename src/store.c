@@ -89,6 +89,9 @@ struct object* store_get_object(struct store_tx *tx, object_id oid) {
         lobject_set_lock(lo, l);
         cache_put_object(s->cache, lo);
     }
+    else {
+        printf("##   found cached\n");
+    }
 
     lock_lock(lobject_get_lock(lo));
 

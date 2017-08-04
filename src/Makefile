@@ -1,5 +1,4 @@
-WARN=-Wall -Wshadow -Wpointer-arith -Wcast-qual \
-	-Wstrict-prototypes 
+WARN=-Wall -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes 
 CFLAGS=-g $(WARN) -std=c11 -pthread
 CINCFLAGS=
 LDFLAGS=-lev
@@ -10,7 +9,7 @@ SUBDIRS=test
 SOURCES=$(shell ls *.c)
 OBJECTS=$(subst .c,.o,$(SOURCES))
 
-.PHONY: all clean check $(SUBDIRS)
+.PHONY: all clean test check $(SUBDIRS)
 
 all: $(TARGET) $(SUBDIRS)
 
@@ -34,7 +33,8 @@ clean:
 		$(MAKE) -C $$dir clean; \
 	done
 
-test check: $(OBJECTS) $(SUBDIRS)
+test: check
+check: $(OBJECTS) $(SUBDIRS)
 	make -C test check
 
 -include *.d

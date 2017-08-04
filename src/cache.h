@@ -16,9 +16,9 @@ void cache_free(struct cache *c);
 // get object from cache, increase refcount by one. you need to release() the object
 // so that it can be purged from cache. return NULL if not found.
 struct lobject* cache_get_object(struct cache *c, object_id id);
-// put object in cache, it must not be there already. set refcount to 1
+// put object in cache, it must not be there already. sets to pinned as well
 void cache_put_object(struct cache *c, struct lobject *o);
-// decrease refcount, objects with refcount == 0 can be replaced in the cache
+// unpin item so that it can be replaced in the cache
 void cache_release_object(struct cache *c, struct lobject *o);
 
 #endif /* CACHE_H */

@@ -393,7 +393,7 @@ void queue_event_callback(struct ev_loop *loop, struct ev_async *w, int revents)
                 socket->cb_data2 = current_item->init_socket.cb_data2;
                 ev_io_start(socket->net_ctx->loop, &socket->read_event);
                 break;
-            case QUEUE_TYPE_WRITE_SOCKET:;
+            case QUEUE_TYPE_WRITE_SOCKET:
                 socket = current_item->write_socket.socket;
                 pthread_mutex_lock(&socket->socket_latch);
                 struct socket_buffer *sbuf = malloc(sizeof(struct socket_buffer));

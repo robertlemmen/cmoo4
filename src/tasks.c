@@ -206,7 +206,7 @@ void* tasks_thread_func(void *arg) {
         // second step of processing the item, without global lock
         val slot;
         switch (current_item->type) {
-            case QUEUE_TYPE_INIT:;
+            case QUEUE_TYPE_INIT:
                 slot = val_make_string("init");
                 vm_eval_ctx_exec(vm_eval_ctx, slot, 1,
                     val_make_special(ctx));
@@ -224,7 +224,7 @@ void* tasks_thread_func(void *arg) {
                 val_dec_ref(slot);
                 ctx->stop_flag = 1;
                 break;
-            case QUEUE_TYPE_ACCEPT:;
+            case QUEUE_TYPE_ACCEPT:
                 slot = val_make_string("accept");
                 vm_eval_ctx_exec(vm_eval_ctx, slot, 1,
                     val_make_special(current_item->accept_data.socket));

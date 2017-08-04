@@ -1,5 +1,4 @@
-WARN=-Wall -Wshadow -Wpointer-arith -Wcast-qual \
-	-Wstrict-prototypes 
+WARN=-Wall -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes 
 CFLAGS=-g $(WARN) -std=c11
 CINCFLAGS=$(shell pkg-config --cflags check) -I..
 LDFLAGS=$(shell pkg-config --libs check)
