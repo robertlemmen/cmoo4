@@ -207,31 +207,31 @@ void* tasks_thread_func(void *arg) {
         val slot;
         switch (current_item->type) {
             case QUEUE_TYPE_INIT:
-                slot = val_make_string("init");
+                slot = val_make_string(4, "init");
                 vm_eval_ctx_exec(vm_eval_ctx, slot, 1,
                     val_make_special(ctx));
                 val_dec_ref(slot);
                 break;
             case QUEUE_TYPE_LISTEN_ERROR:
-                slot = val_make_string("error");
+                slot = val_make_string(5, "error");
                 vm_eval_ctx_exec(vm_eval_ctx, slot, 1,
                     val_make_int(current_item->listen_error_data.errnum));
                 val_dec_ref(slot);
                 break;
             case QUEUE_TYPE_STOP:
-                slot = val_make_string("shutdown");
+                slot = val_make_string(8, "shutdown");
                 vm_eval_ctx_exec(vm_eval_ctx, slot, 0);
                 val_dec_ref(slot);
                 ctx->stop_flag = 1;
                 break;
             case QUEUE_TYPE_ACCEPT:
-                slot = val_make_string("accept");
+                slot = val_make_string(6, "accept");
                 vm_eval_ctx_exec(vm_eval_ctx, slot, 1,
                     val_make_special(current_item->accept_data.socket));
                 val_dec_ref(slot);
                 break;
             case QUEUE_TYPE_READ:
-                slot = val_make_string("read");
+                slot = val_make_string(4, "read");
                 // XXX we really need a separate buffer type that takes pointer
                 // and size, and that can be converted to a string using a
                 // charset.
@@ -239,11 +239,11 @@ void* tasks_thread_func(void *arg) {
                 // sure that is really guaranteed at the moment...
                 vm_eval_ctx_exec(vm_eval_ctx, slot, 2,
                     val_make_special(net_tx),
-                    val_make_string(current_item->read_data.buf));
+                    val_make_string(strlen(current_item->read_data.buf), current_item->read_data.buf));
                 val_dec_ref(slot);
                 break;
             case QUEUE_TYPE_CLOSED:
-                slot = val_make_string("closed");
+                slot = val_make_string(6, "closed");
                 vm_eval_ctx_exec(vm_eval_ctx, slot, 1,
                     val_make_special(current_item->closed_data.socket));
                 val_dec_ref(slot);

@@ -87,6 +87,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         &&do_true,
         &&do_load_int,
         &&do_load_float,
+        &&do_load_string,
         &&do_type,
         &&do_logical_and,
         &&do_logical_or,
@@ -268,6 +269,17 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             ctx->fp[reg].val = val_make_float(nval);
             DISPATCH();
         }
+        do_load_string: {
+            uint8_t reg = *((uint8_t*)ip);
+            ip += 1;
+            uint16_t len = *((uint16_t*)ip);
+            ip += 2;
+            printf("| LOAD_STRING r0x%02X <- %2i ???      |\n", reg, len);
+            val_clear(&ctx->fp[reg].val);
+            ctx->fp[reg].val = val_make_string(len, ip);
+            ip += len;
+            DISPATCH();
+        }
         do_type: {
             uint8_t dst = *((uint8_t*)ip);
             ip += 1;
@@ -421,9 +433,17 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
                                 == val_get_bool(ctx->fp[src_b].val);
                 }
                 else if (val_type(ctx->fp[src_a].val) == TYPE_STRING) {
-                    result = strcmp(val_get_string(ctx->fp[src_a].val), 
-                                    val_get_string(ctx->fp[src_b].val)) 
-                               == 0;
+                    int len_a = val_get_string_len(ctx->fp[src_a].val);
+                    int len_b = val_get_string_len(ctx->fp[src_b].val);
+                    if (len_a == len_b) {
+                        result = strncmp(val_get_string_data(ctx->fp[src_a].val), 
+                                        val_get_string_data(ctx->fp[src_b].val),
+                                        len_a) 
+                                   == 0;
+                    }
+                    else {
+                        result = false;
+                    }
                 }
                 // XXX float
             }
@@ -461,9 +481,16 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
                             <= val_get_int(ctx->fp[src_b].val);
             }
             else if (val_type(ctx->fp[src_a].val) == TYPE_STRING) {
-                result = strcmp(val_get_string(ctx->fp[src_a].val), 
-                                val_get_string(ctx->fp[src_b].val)) 
-                           <= 0;
+                int len_a = val_get_string_len(ctx->fp[src_a].val);
+                int len_b = val_get_string_len(ctx->fp[src_b].val);
+                int min_len = (len_a < len_b) ? len_a : len_b;
+                int cmp = strncmp(val_get_string_data(ctx->fp[src_a].val), 
+                                  val_get_string_data(ctx->fp[src_b].val),
+                                  min_len);
+                if (cmp == 0) {
+                    result = len_a <= len_b;
+                }
+                result = cmp <= 0;
             }
             // XXX float
             else {
@@ -503,9 +530,16 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
                             < val_get_int(ctx->fp[src_b].val);
             }
             else if (val_type(ctx->fp[src_a].val) == TYPE_STRING) {
-                result = strcmp(val_get_string(ctx->fp[src_a].val), 
-                                val_get_string(ctx->fp[src_b].val)) 
-                           < 0;
+                int len_a = val_get_string_len(ctx->fp[src_a].val);
+                int len_b = val_get_string_len(ctx->fp[src_b].val);
+                int min_len = (len_a < len_b) ? len_a : len_b;
+                int cmp = strncmp(val_get_string_data(ctx->fp[src_a].val), 
+                                  val_get_string_data(ctx->fp[src_b].val),
+                                  min_len); 
+                if (cmp == 0) {
+                    result = len_a < len_b;
+                }
+                result = cmp < 0;
             }
             // XXX float
             else {

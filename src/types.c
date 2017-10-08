@@ -16,6 +16,7 @@
 
 struct heap_string {
     uint16_t ref_count;
+    uint16_t length;
     char data[];
 };
 
@@ -45,10 +46,11 @@ val val_make_float(float i) {
     return ((val)fv.i << 4) | TYPE_FLOAT;
 }
 
-val val_make_string(char *s) {
+val val_make_string(uint16_t len, char *s) {
     struct heap_string *hs = malloc(strlen(s) + sizeof(uint16_t));
-    strcpy(hs->data, s);
+    memcpy(hs->data, s, len);
     hs->ref_count = 1;
+    hs->length = len;
     uint64_t ret = (uint64_t)hs;
     ret |= TYPE_STRING;
     return ret;
@@ -112,10 +114,16 @@ float val_get_float(val v) {
     return fv.f;
 }
 
-char* val_get_string(val v) {
+char* val_get_string_data(val v) {
     assert((v & 0x7) == TYPE_STRING);
     struct heap_string *hs = (struct heap_string*)((uint64_t)v & (~0x7));
     return hs->data;
+}
+
+uint16_t val_get_string_len(val v) {
+    assert((v & 0x7) == TYPE_STRING);
+    struct heap_string *hs = (struct heap_string*)((uint64_t)v & (~0x7));
+    return hs->length;
 }
 
 object_id val_get_objref(val v) {

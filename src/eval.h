@@ -108,27 +108,27 @@
 #define OP_TRUE             11 // reg8:dst <= BOOL(TRUE)
 #define OP_LOAD_INT         12 // reg8:dst <= int32:value
 #define OP_LOAD_FLOAT       13 // reg8:dst <= float32:value
-//XXX OP_LOAD_STRING
-#define OP_TYPE             14 // reg8:dst <= type(reg8:src)
-#define OP_LOGICAL_AND      15 // reg8:dst <= logical_and(reg8:src1, reg8:src2)
-#define OP_LOGICAL_OR       16 // reg8:dst <= logical_or(reg8:src1, reg8:src2)
-#define OP_LOGICAL_NOT      17 // reg8:dst <= local_not(reg8:src)
-#define OP_EQ               18 // reg8:dst <= eq(reg8:src1, reg8:src2)
-#define OP_LE               19 // reg8:dst <= le(reg8:src1, reg8:src2)
-#define OP_LT               20 // reg8:dst <= lt(reg8:src1, reg8:src2)
-#define OP_ADD              21 // reg8:dst <= reg8:src1 + reg8:src2
-#define OP_SUB              22 // reg8:dst <= reg8:src1 - reg8:src2
-#define OP_MUL              23 // reg8:dst <= reg8:src1 * reg8:src2
-#define OP_DIV              24 // reg8:dst <= reg8:src1 / reg8:src2
-#define OP_MOD              25 // reg8:dst <= reg8:src1 % reg8:src2
-#define OP_JUMP             26 // IP += int32:offset
-#define OP_JUMP_IF          27 // if reg8:src is TRUE then IP += int32:offset
-#define OP_JUMP_EQ          28 // if eq(reg8:src1, reg8:src2) then IP += int32:offset
-#define OP_JUMP_NE          29 // if ne(reg8:src1, reg8:src2) then IP += int32:offset
-#define OP_JUMP_LE          30 // if le(reg8:src1, reg8:src2 then IP += int32:offset
-#define OP_JUMP_LT          31 // if lt(reg8:src1, reg8:src2) then IP += int32:offset
+#define OP_LOAD_STRING      14 // reg8:dst <= int16 length, string:value
+#define OP_TYPE             15 // reg8:dst <= type(reg8:src)
+#define OP_LOGICAL_AND      16 // reg8:dst <= logical_and(reg8:src1, reg8:src2)
+#define OP_LOGICAL_OR       17 // reg8:dst <= logical_or(reg8:src1, reg8:src2)
+#define OP_LOGICAL_NOT      18 // reg8:dst <= local_not(reg8:src)
+#define OP_EQ               19 // reg8:dst <= eq(reg8:src1, reg8:src2)
+#define OP_LE               20 // reg8:dst <= le(reg8:src1, reg8:src2)
+#define OP_LT               21 // reg8:dst <= lt(reg8:src1, reg8:src2)
+#define OP_ADD              22 // reg8:dst <= reg8:src1 + reg8:src2
+#define OP_SUB              23 // reg8:dst <= reg8:src1 - reg8:src2
+#define OP_MUL              24 // reg8:dst <= reg8:src1 * reg8:src2
+#define OP_DIV              25 // reg8:dst <= reg8:src1 / reg8:src2
+#define OP_MOD              26 // reg8:dst <= reg8:src1 % reg8:src2
+#define OP_JUMP             27 // IP += int32:offset
+#define OP_JUMP_IF          28 // if reg8:src is TRUE then IP += int32:offset
+#define OP_JUMP_EQ          29 // if eq(reg8:src1, reg8:src2) then IP += int32:offset
+#define OP_JUMP_NE          30 // if ne(reg8:src1, reg8:src2) then IP += int32:offset
+#define OP_JUMP_LE          31 // if le(reg8:src1, reg8:src2 then IP += int32:offset
+#define OP_JUMP_LT          32 // if lt(reg8:src1, reg8:src2) then IP += int32:offset
 
-#define OP_SYSCALL          32 // int8:nargs
+#define OP_SYSCALL          33 // int8:nargs
 // XXX OP_LENGTH, OP_CONCAT
 
 // XXX more ops

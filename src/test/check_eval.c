@@ -30,6 +30,13 @@ void eval_debug_callback(val v, void *a) {
         sprintf(buffer, "f%.3f", val_get_float(v));
         strcat(res, buffer);
     }
+    else if (val_type(v) == TYPE_STRING) {
+        char buffer[val_get_string_len(v)+1];
+        buffer[0] = 's';
+        memcpy(&buffer[1], val_get_string_data(v), val_get_string_len(v));
+        buffer[val_get_string_len(v)+1] = '\0';
+        strcat(res, buffer);
+    }
     else {
         ck_abort_msg("unexpected type in debug callback");
     }
@@ -365,8 +372,8 @@ int t0_count = 0;
 val sys_t0(void) {
 }
 
-START_TEST(test_eval_syscall) {
-    printf("  test_eval_syscall...\n");
+START_TEST(test_eval_09_syscall) {
+    printf("  test_eval_09_syscall...\n");
     struct eval_ctx *ex = eval_new_ctx();
     struct syscall_table *st = syscall_table_new();
     syscall_table_add_a0(st, "sys_t0", sys_t0);
@@ -388,6 +395,38 @@ START_TEST(test_eval_syscall) {
 }
 END_TEST
 
+START_TEST(test_eval_10_string) {
+    printf("  test_eval_10_string...\n");
+    struct eval_ctx *ex = eval_new_ctx();
+
+    char trace[4096];
+    trace[0] = '\0';
+    eval_set_dbg_handler(ex, &eval_debug_callback, trace);
+
+    opcode code[] = {   OP_NOOP, 
+                        OP_ARGS_LOCALS, 0x00, 0x04,
+                        OP_LOAD_STRING, 0x00, 0x04, 0x00, 't', 'e', 's', 't',
+                        OP_LOAD_STRING, 0x01, 0x04, 0x00, 't', 'e', 's', 't',
+                        OP_LOAD_STRING, 0x02, 0x05, 0x00, 'z', 'i', 'c', 'k', 'e',
+                        OP_DEBUGR, 0x00,
+                        OP_DEBUGR, 0x01,
+                        OP_DEBUGR, 0x02,
+                        OP_EQ, 0x03, 0x00, 0x01,
+                        OP_DEBUGR, 0x03,
+                        OP_EQ, 0x03, 0x01, 0x02,
+                        OP_DEBUGR, 0x03,
+                        OP_HALT};
+
+    eval_exec(ex, code);
+
+    printf("debug trace: %s\n", trace);
+    ck_assert_msg(strcmp(trace, "steststestszickeTF") == 0,
+        "unexpected debug callback trace");
+
+    eval_free_ctx(ex);
+}
+END_TEST
+
 TCase* make_eval_checks(void) {
     TCase *tc_eval;
 
@@ -400,7 +439,8 @@ TCase* make_eval_checks(void) {
     tcase_add_test(tc_eval, test_eval_06);
     tcase_add_test(tc_eval, test_eval_07);
     tcase_add_test(tc_eval, test_eval_08);
-    tcase_add_test(tc_eval, test_eval_syscall);
+    tcase_add_test(tc_eval, test_eval_09_syscall);
+    tcase_add_test(tc_eval, test_eval_10_string);
 
     return tc_eval;
 }

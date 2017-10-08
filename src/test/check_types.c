@@ -46,11 +46,12 @@ START_TEST(test_types_02) {
 
     char *in1 = "test234";
 
-    v = val_make_string(in1);
+    v = val_make_string(strlen(in1), in1);
     ck_assert(val_type(v) == TYPE_STRING);
 
-    char *out = val_get_string(v);
-    ck_assert(strcmp(out, in1) == 0);
+    ck_assert(val_get_string_len(v) == 7);
+    char *out = val_get_string_data(v);
+    ck_assert(strncmp(out, in1, 7) == 0);
 
     val_dec_ref(v);
 }

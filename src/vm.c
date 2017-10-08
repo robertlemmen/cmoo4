@@ -63,7 +63,7 @@ void vm_eval_ctx_exec(struct eval_ctx *ex, val method, int num_args, ...) {
     object_id oid = obj_get_id(ex->start_obj);
 
     printf("# vm_eval_ctx_exec %p oid=%li slot=%s num_args=%i\n", ex,
-        oid, val_get_string(method), num_args);
+        oid, val_get_string_data(method), num_args);
 
     val arg0;
     if (num_args >= 1) {
@@ -75,41 +75,41 @@ void vm_eval_ctx_exec(struct eval_ctx *ex, val method, int num_args, ...) {
     }
 
     // XXX pseudo-core
-    if ((oid == 0) && (strcmp(val_get_string(method), "init") == 0)
+    if ((oid == 0) && (strcmp(val_get_string_data(method), "init") == 0)
             && (num_args == 1) && (val_type(arg0) == TYPE_SPECIAL)) {
         printf("#   0::init\n");
         tasks_ctx = val_get_special(arg0);
         tasks_net_make_listener(tasks_ctx, 12345, 11);
     }
-    else if ((oid == 0) && (strcmp(val_get_string(method), "shutdown") == 0)
+    else if ((oid == 0) && (strcmp(val_get_string_data(method), "shutdown") == 0)
             && (num_args == 0)) {
         printf("#   0::shutdown\n");
         tasks_net_shutdown_listener(tasks_ctx, 12345);
     }
-    else if ((oid == 11) && (strcmp(val_get_string(method), "accept") == 0)
+    else if ((oid == 11) && (strcmp(val_get_string_data(method), "accept") == 0)
             && (num_args == 1) && (val_type(arg0) == TYPE_SPECIAL)) {
         printf("#   11::accept\n");
         sockets[socket_oid_seq] = arg0;
         tasks_net_accept_socket(tasks_ctx, val_get_special(arg0), socket_oid_seq);
         socket_oid_seq++;
     }
-    else if ((oid == 11) && (strcmp(val_get_string(method), "error") == 0)
+    else if ((oid == 11) && (strcmp(val_get_string_data(method), "error") == 0)
             && (num_args == 1) && (val_type(arg0) == TYPE_INT)) {
         printf("#   11::error %s\n", strerror(val_get_int(arg0)));
     }
-    else if ((oid >= 111) && (strcmp(val_get_string(method), "closed") == 0)
+    else if ((oid >= 111) && (strcmp(val_get_string_data(method), "closed") == 0)
             && (num_args == 1) && (val_type(arg0) == TYPE_SPECIAL)) {
         printf("#   %li::closed\n", oid);
         tasks_net_socket_free(tasks_ctx, val_get_special(arg0));
     }
-    else if ((oid >= 111) && (strcmp(val_get_string(method), "read") == 0)
+    else if ((oid >= 111) && (strcmp(val_get_string_data(method), "read") == 0)
             && (num_args == 2) && (val_type(arg0) == TYPE_SPECIAL)
             && (val_type(arg1) == TYPE_STRING)) {
-        printf("#   %li::read %s\n", oid, val_get_string(arg1));
+        printf("#   %li::read %s\n", oid, val_get_string_data(arg1));
         tasks_net_socket_write(tasks_ctx,
             val_get_special(sockets[oid]),
             val_get_special(arg0),
-            val_get_string(arg1), strlen(val_get_string(arg1)));
+            val_get_string_data(arg1), strlen(val_get_string_data(arg1)));
     }
     else if ((oid >= 111) ) {
         printf("#   %li::something\n", oid);

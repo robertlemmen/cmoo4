@@ -32,7 +32,7 @@ val val_make_nil(void);
 val val_make_bool(bool i);
 val val_make_int(int i);
 val val_make_float(float i);
-val val_make_string(char *s); // copies, does not consume argument
+val val_make_string(uint16_t len, char *s); // copies, does not consume argument
 val val_make_objref(object_id ref);
 // XXX we need a way to tell the different specials apart
 val val_make_special(void *special);
@@ -54,7 +54,8 @@ void val_dec_ref(val v);
 bool val_get_bool(val v);
 int val_get_int(val v);
 float val_get_float(val v);
-char* val_get_string(val v);
+char* val_get_string_data(val v);
+uint16_t val_get_string_len(val v);
 object_id val_get_objref(val v);
 void* val_get_special(val v);
 // XXX more getters
