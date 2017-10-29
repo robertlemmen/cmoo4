@@ -107,6 +107,8 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         &&do_jump_le,
         &&do_jump_lt,
         &&do_syscall,
+        &&do_length,
+        &&do_concat,
     };
     #define DISPATCH() goto *dispatch_table[*ip++]
 
@@ -718,6 +720,67 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             printf("| SYSCALL %-4i                     |\n", nargs);
             // XXX determine args and system call name
             // XXX call it
+            DISPATCH();
+        }
+        do_length: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src = *((uint8_t*)ip);
+            ip += 1;
+            printf("| LENGTH r0x%02X <- r0x%02X            |\n", dst, src);
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (val_type(ctx->fp[src].val) == TYPE_STRING) {
+                val_clear(&ctx->fp[dst].val);
+                ctx->fp[dst].val = val_make_int(val_get_string_len(ctx->fp[src].val));
+            }
+            else {
+                // XXX raise
+                printf("!! parameter type mismatch\n");
+            }
+            DISPATCH();
+        }
+        do_concat: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_a = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t src_b = *((uint8_t*)ip);
+            ip += 1;
+            printf("| CONCAT r0x%02X <- r0x%02X r0x%02X      |\n", dst, src_a, src_b);
+            if (&ctx->fp[dst] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_a] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (&ctx->fp[src_b] > ctx->sp) {
+                // XXX raise
+                printf("!! access to reg outside stack\n");
+            }
+            if (   (val_type(ctx->fp[src_a].val) == TYPE_STRING) 
+                && (val_type(ctx->fp[src_b].val) == TYPE_STRING) ) {
+                val_clear(&ctx->fp[dst].val);
+                int len_a = val_get_string_len(ctx->fp[src_a].val);
+                int len_b = val_get_string_len(ctx->fp[src_b].val);
+                char *buf = malloc(len_a + len_b);
+                memcpy(&buf[0], val_get_string_data(ctx->fp[src_a].val), len_a);
+                memcpy(&buf[len_a], val_get_string_data(ctx->fp[src_b].val), len_b);
+                ctx->fp[dst].val = val_make_string(len_a + len_b, buf);
+                free(buf);
+            }
+            else {
+                // XXX raise
+                printf("!! parameter type mismatch\n");
+            }
             DISPATCH();
         }
     }

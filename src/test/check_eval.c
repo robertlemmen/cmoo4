@@ -404,7 +404,7 @@ START_TEST(test_eval_10_string) {
     eval_set_dbg_handler(ex, &eval_debug_callback, trace);
 
     opcode code[] = {   OP_NOOP, 
-                        OP_ARGS_LOCALS, 0x00, 0x04,
+                        OP_ARGS_LOCALS, 0x00, 0x06,
                         OP_LOAD_STRING, 0x00, 0x04, 0x00, 't', 'e', 's', 't',
                         OP_LOAD_STRING, 0x01, 0x04, 0x00, 't', 'e', 's', 't',
                         OP_LOAD_STRING, 0x02, 0x05, 0x00, 'z', 'i', 'c', 'k', 'e',
@@ -415,12 +415,22 @@ START_TEST(test_eval_10_string) {
                         OP_DEBUGR, 0x03,
                         OP_EQ, 0x03, 0x01, 0x02,
                         OP_DEBUGR, 0x03,
+                        OP_LOAD_STRING, 0x03, 0x00, 0x00, 
+                        OP_LOAD_INT, 0x04, 0x00, 0x00, 0x00, 0x00,
+                        OP_LENGTH, 0x05, 0x03,
+                        OP_DEBUGR, 0x05,
+                        OP_LENGTH, 0x05, 0x01,
+                        OP_DEBUGR, 0x05,
+                        OP_CONCAT, 0x03, 0x01, 0x02,
+                        OP_LENGTH, 0x05, 0x03,
+                        OP_DEBUGR, 0x05,
+                        OP_DEBUGR, 0x03,
                         OP_HALT};
 
     eval_exec(ex, code);
 
     printf("debug trace: %s\n", trace);
-    ck_assert_msg(strcmp(trace, "steststestszickeTF") == 0,
+    ck_assert_msg(strcmp(trace, "steststestszickeTFI0I4I9stestzicke") == 0,
         "unexpected debug callback trace");
 
     eval_free_ctx(ex);

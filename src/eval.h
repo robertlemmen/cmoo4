@@ -128,8 +128,10 @@
 #define OP_JUMP_LE          31 // if le(reg8:src1, reg8:src2 then IP += int32:offset
 #define OP_JUMP_LT          32 // if lt(reg8:src1, reg8:src2) then IP += int32:offset
 
+// XXX need to be reordered
 #define OP_SYSCALL          33 // int8:nargs
-// XXX OP_LENGTH, OP_CONCAT
+#define OP_LENGTH           34 // reg8:dst <= strlen(reg8:src)
+#define OP_CONCAT           35 // reg8:dst <= concat(reg8:src1, reg8:src2)
 
 // XXX more ops
 
