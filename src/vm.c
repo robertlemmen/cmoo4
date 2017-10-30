@@ -71,6 +71,7 @@ struct vm* vm_new(struct store *s) {
 }
 
 void vm_free(struct vm *v) {
+    syscall_table_free(v->syscalls);
     free(v);
 }
 
@@ -88,6 +89,11 @@ struct vm_eval_ctx* vm_get_eval_ctx(struct vm *v, object_id id, uint64_t task_id
     // XXX more, need lock implementation
 
     return ret;
+}
+
+void vm_free_eval_ctx(struct vm_eval_ctx *ex) {
+    eval_free_ctx(ex->eval_ctx);
+    free(ex);
 }
 
 void vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...) {
@@ -179,8 +185,8 @@ void vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...) {
 
         opcode code[] = {
                             OP_ARGS_LOCALS, 0x01, 0x01,
-                            OP_LOAD_STRING, 0x02, 0x0F, 0x00, 'n', 'e', 't', '_', 's', 'o', 'c', 'k', 'e', 't', '_', 'f', 'r', 'e', 'e', 
-                            OP_PUSH, 0x02,
+                            OP_LOAD_STRING, 0x01, 0x0F, 0x00, 'n', 'e', 't', '_', 's', 'o', 'c', 'k', 'e', 't', '_', 'f', 'r', 'e', 'e', 
+                            OP_PUSH, 0x01,
                             OP_PUSH, 0x00,
                             OP_SYSCALL, 0x01,
                             OP_HALT};

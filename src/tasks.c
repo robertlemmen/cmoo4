@@ -79,6 +79,7 @@ struct tasks_ctx {
 
 void tasks_enqueue_item(struct tasks_ctx *ctx, struct queue_item *item) {
     pthread_mutex_lock(&ctx->queue_latch);
+    item->next = NULL;
     if (ctx->queue_back) {
         ctx->queue_back->next = item;
     }
@@ -154,7 +155,7 @@ void* tasks_thread_func(void *arg) {
         }
 
         // wait for items to appear
-        while (ctx->queue_front == 0) {
+        while (!ctx->queue_front) {
             pthread_cond_wait(&ctx->queue_cond, &ctx->queue_latch);
         }
         // pick off queue
@@ -241,6 +242,8 @@ void* tasks_thread_func(void *arg) {
                     val_make_special(net_tx),
                     val_make_string(strlen(current_item->read_data.buf), current_item->read_data.buf));
                 val_dec_ref(slot);
+                // XXX for now
+                free(current_item->read_data.buf);
                 break;
             case QUEUE_TYPE_CLOSED:
                 slot = val_make_string(6, "closed");
@@ -254,7 +257,7 @@ void* tasks_thread_func(void *arg) {
 
         // commit network transaction
         ntx_commit_tx(net_tx);
-
+        vm_free_eval_ctx(vm_eval_ctx);
         free(current_item);
     }
 

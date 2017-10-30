@@ -23,5 +23,6 @@ void vm_free(struct vm *v);
 struct vm_eval_ctx* vm_get_eval_ctx(struct vm *v, object_id id, uint64_t task_id);
 // XXX missing arguments for slot to call and arguments
 void vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...);
+void vm_free_eval_ctx(struct vm_eval_ctx *ex);
 
 #endif /* VM_H */

@@ -856,7 +856,12 @@ void syscall_table_set_ctx(struct syscall_table *st, void *ctx) {
 }
 
 void syscall_table_free(struct syscall_table *st) {
-    // XXX free the entries
+    while (st->syscalls) {
+        struct syscall_entry *se = st->syscalls;
+        st->syscalls = se->next;
+        free(se->name);
+        free(se);
+    }
     free(st);
 }
 

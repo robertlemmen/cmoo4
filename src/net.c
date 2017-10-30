@@ -451,6 +451,7 @@ struct net_ctx* net_new_ctx(void (*init_callback)(struct net_ctx *ctx)) {
     ev_async_init(&ret->queue_event, queue_event_callback);
     ret->queue_event.data = ret;
     ev_async_start(ret->loop, &ret->queue_event);
+    ret->listeners = NULL;
 
     return ret;
 }
