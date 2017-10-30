@@ -165,17 +165,22 @@ void eval_set_dbg_handler(struct eval_ctx *ctx,
 // debug clutch to allow direct execution of code without objects and the like.
 // This is only used by test drivers and debug code, not by an actual CMOO server
 void eval_exec(struct eval_ctx *ctx, opcode *code);
+void eval_push_arg(struct eval_ctx *ctx, val v);
 
-// XXX we will need some context object to pass around, perhaps store in the sycall table and
-// pass a syscall table ptr to each callback?
+// XXX these are not used outside? perhaps hide?
 struct syscall_table* syscall_table_new(void);
 void syscall_table_free(struct syscall_table *st);
+
+struct syscall_table* eval_get_syscall_table(struct eval_ctx *ctx);
+void eval_set_syscall_table(struct eval_ctx *ctx, struct syscall_table *st);
+
 // set a context object that is being passed into each sycall invocation
 void syscall_table_set_ctx(struct syscall_table *st, void *ctx);
 
 void syscall_table_add_a0(struct syscall_table *st, char *name, val (*syscall)(void*));
 void syscall_table_add_a1(struct syscall_table *st, char *name, val (*syscall)(void*, val v1));
 void syscall_table_add_a2(struct syscall_table *st, char *name, val (*syscall)(void*, val v1, val v2));
+void syscall_table_add_a3(struct syscall_table *st, char *name, val (*syscall)(void*, val v1, val v2, val v3));
 
 void eval_set_syscall_table(struct eval_ctx *ctx, struct syscall_table *st);
 

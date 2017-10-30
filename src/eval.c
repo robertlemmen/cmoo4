@@ -22,6 +22,7 @@ struct syscall_entry {
         val (*a0)(void *ctx);
         val (*a1)(void *ctx, val v1);
         val (*a2)(void *ctx, val v1, val v2);
+        val (*a3)(void *ctx, val v1, val v2, val v3);
     } funcptr;
     struct syscall_entry *next;
 };
@@ -56,6 +57,7 @@ struct eval_ctx* eval_new_ctx(void) {
     ret->fp++;
     ret->sp = ret->stack;
     ret->callback = NULL;
+    ret->syscall_table = NULL;
     return ret;
 }
 
@@ -727,7 +729,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
                 struct syscall_entry *se = NULL;
                 struct syscall_entry *cse = ctx->syscall_table->syscalls;
                 while (cse) {
-                    if (!strcmp(buf, cse->name)) {
+                    if ( (cse->arity == nargs) && (!strcmp(buf, cse->name)) ) {
                         se = cse;
                         break;
                     }
@@ -742,6 +744,9 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
                     }
                     else if (nargs == 2) {
                         se->funcptr.a2(ctx->syscall_table->ctx, ctx->sp[-1].val, ctx->sp[-0].val);
+                    }
+                    else if (nargs == 3) {
+                        se->funcptr.a3(ctx->syscall_table->ctx, ctx->sp[-2].val, ctx->sp[-1].val, ctx->sp[-0].val);
                     }
                     else {
                         // XXX raise
@@ -830,11 +835,20 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
     }
 }
 
+void eval_push_arg(struct eval_ctx *ctx, val v) {
+    ctx->sp++;
+    ctx->sp->val = v;
+}
+
 struct syscall_table* syscall_table_new(void) {
     struct syscall_table *ret = malloc(sizeof(struct syscall_table));
     ret->syscalls = NULL;
     ret->ctx = NULL;
     return ret;
+}
+
+struct syscall_table* eval_get_syscall_table(struct eval_ctx *ctx) {
+    return ctx->syscall_table;
 }
 
 void syscall_table_set_ctx(struct syscall_table *st, void *ctx) {
@@ -872,6 +886,16 @@ void syscall_table_add_a2(struct syscall_table *st, char *name, val (*syscall)(v
     se->name = malloc(strlen(name) + 1);
     strcpy(se->name, name);
     se->funcptr.a2 = syscall;
+    se->next = st->syscalls;
+    st->syscalls = se;
+}
+
+void syscall_table_add_a3(struct syscall_table *st, char *name, val (*syscall)(void*, val v1, val v2, val v3)) {
+    struct syscall_entry *se = malloc(sizeof(struct syscall_entry));
+    se->arity = 3;
+    se->name = malloc(strlen(name) + 1);
+    strcpy(se->name, name);
+    se->funcptr.a3 = syscall;
     se->next = st->syscalls;
     st->syscalls = se;
 }

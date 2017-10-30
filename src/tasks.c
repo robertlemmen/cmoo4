@@ -169,7 +169,7 @@ void* tasks_thread_func(void *arg) {
         // determine a task_id for transaction priorities
         uint64_t task_id = ctx->task_id_seq++;
 
-        struct eval_ctx *vm_eval_ctx;
+        struct vm_eval_ctx *vm_eval_ctx;
 
         // XXX all this processing needs to be aware of TX rollbacks and
         // retry if necessary
