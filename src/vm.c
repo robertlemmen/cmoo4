@@ -224,5 +224,4 @@ void vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...) {
     }
 
     store_finish_tx(ex->stx);
-    free(ex);
 }

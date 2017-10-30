@@ -833,6 +833,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             DISPATCH();
         }
     }
+    // XXX val_clear the whole stack
 }
 
 void eval_push_arg(struct eval_ctx *ctx, val v) {

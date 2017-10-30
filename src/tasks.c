@@ -300,6 +300,7 @@ struct tasks_ctx* tasks_new_ctx(struct net_ctx *net, struct ntx_ctx *ntx, struct
 void tasks_free_ctx(struct tasks_ctx *ctx) {
     pthread_mutex_destroy(&ctx->queue_latch);
     pthread_cond_destroy(&ctx->queue_cond);
+    free(ctx->thread_ids);
     free(ctx);
 }
 
