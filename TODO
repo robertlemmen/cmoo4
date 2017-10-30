@@ -3,12 +3,10 @@ C M O O   T O D O
 
 next main jobs
 --------------
-- strings
-- continue current syscall work to call into networking from bytecode
 - vm pseudo-core to fetch objects and lock them, but still use the pseudo-core
   for actual execution
   - stub locking
-  - stub persistence 
+  - stub persistence
 - eval work and assembler to allow echo server in actual bytecode
   - current opcodes support for strings
   - call/return, requires stub object stuff
