@@ -19,15 +19,16 @@ struct syscall_entry {
     uint8_t arity;
     char *name;
     union syscall_arity {
-        val (*a0)(void);
-        val (*a1)(val v1);
-        val (*a2)(val v1, val v2);
+        val (*a0)(void *ctx);
+        val (*a1)(void *ctx, val v1);
+        val (*a2)(void *ctx, val v1, val v2);
     } funcptr;
     struct syscall_entry *next;
 };
 
 struct syscall_table {
     struct syscall_entry *syscalls;
+    void *ctx;
 };
 
 struct eval_ctx {
@@ -718,7 +719,50 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             uint8_t nargs = *((uint8_t*)ip);
             ip += 1;
             printf("| SYSCALL %-4i                     |\n", nargs);
-            // XXX determine args and system call name
+            val syscall_name = ctx->sp[nargs * -1].val;
+            if (val_type(syscall_name) == TYPE_STRING) {
+                char *buf = malloc(val_get_string_len(syscall_name) + 1);
+                memcpy(buf, val_get_string_data(syscall_name), val_get_string_len(syscall_name));
+                buf[val_get_string_len(syscall_name)] = '\0';
+                struct syscall_entry *se = NULL;
+                struct syscall_entry *cse = ctx->syscall_table->syscalls;
+                while (cse) {
+                    if (!strcmp(buf, cse->name)) {
+                        se = cse;
+                        break;
+                    }
+                    cse = cse->next;
+                }
+                if (se) {
+                    if (nargs == 0) {
+                        se->funcptr.a0(ctx->syscall_table->ctx);
+                    }
+                    else if (nargs == 1) {
+                        se->funcptr.a1(ctx->syscall_table->ctx, ctx->sp[0].val);
+                    }
+                    else if (nargs == 2) {
+                        se->funcptr.a2(ctx->syscall_table->ctx, ctx->sp[-1].val, ctx->sp[-0].val);
+                    }
+                    else {
+                        // XXX raise
+                        printf("!! unsupported arity in syscall\n");
+                    }
+                }
+                else {
+                    // XXX raise
+                    printf("!! syscall '%s' not found\n", buf);
+                }
+                free(buf);
+                for (int i = 0; i <= nargs; i++) {
+                    val_clear(&ctx->sp->val);
+                    ctx->sp--;
+                }
+            }
+            else {
+                // XXX raise
+                printf("!! parameter type mismatch\n");
+            }
+            // XXX determine system call name and args from stack
             // XXX call it
             DISPATCH();
         }
@@ -789,7 +833,12 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
 struct syscall_table* syscall_table_new(void) {
     struct syscall_table *ret = malloc(sizeof(struct syscall_table));
     ret->syscalls = NULL;
+    ret->ctx = NULL;
     return ret;
+}
+
+void syscall_table_set_ctx(struct syscall_table *st, void *ctx) {
+    st->ctx = ctx;
 }
 
 void syscall_table_free(struct syscall_table *st) {
@@ -797,13 +846,34 @@ void syscall_table_free(struct syscall_table *st) {
     free(st);
 }
 
-void syscall_table_add_a0(struct syscall_table *st, char *name, val (*syscall)(void)) {
+void syscall_table_add_a0(struct syscall_table *st, char *name, val (*syscall)(void*)) {
+    struct syscall_entry *se = malloc(sizeof(struct syscall_entry));
+    se->arity = 0;
+    se->name = malloc(strlen(name) + 1);
+    strcpy(se->name, name);
+    se->funcptr.a0 = syscall;
+    se->next = st->syscalls;
+    st->syscalls = se;
 }
 
-void syscall_table_add_a1(struct syscall_table *st, char *name, val (*syscall)(val v1)) {
+void syscall_table_add_a1(struct syscall_table *st, char *name, val (*syscall)(void*, val v1)) {
+    struct syscall_entry *se = malloc(sizeof(struct syscall_entry));
+    se->arity = 1;
+    se->name = malloc(strlen(name) + 1);
+    strcpy(se->name, name);
+    se->funcptr.a1 = syscall;
+    se->next = st->syscalls;
+    st->syscalls = se;
 }
 
-void syscall_table_add_a2(struct syscall_table *st, char *name, val (*syscall)(val v1, val v2)) {
+void syscall_table_add_a2(struct syscall_table *st, char *name, val (*syscall)(void*, val v1, val v2)) {
+    struct syscall_entry *se = malloc(sizeof(struct syscall_entry));
+    se->arity = 2;
+    se->name = malloc(strlen(name) + 1);
+    strcpy(se->name, name);
+    se->funcptr.a2 = syscall;
+    se->next = st->syscalls;
+    st->syscalls = se;
 }
 
 void eval_set_syscall_table(struct eval_ctx *ctx, struct syscall_table *st) {

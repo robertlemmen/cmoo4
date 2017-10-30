@@ -368,8 +368,13 @@ END_TEST
 
 // XXX test for float eq,lt,le
 
-int t0_count = 0;
-val sys_t0(void) {
+int scall_count = 0;
+val sys_t0(void *ctx) {
+    scall_count++;
+}
+
+val sys_t1(void *ctx, val arg) {
+    scall_count += val_get_int(arg);
 }
 
 START_TEST(test_eval_09_syscall) {
@@ -377,18 +382,25 @@ START_TEST(test_eval_09_syscall) {
     struct eval_ctx *ex = eval_new_ctx();
     struct syscall_table *st = syscall_table_new();
     syscall_table_add_a0(st, "sys_t0", sys_t0);
+    syscall_table_add_a1(st, "sys_t1", sys_t1);
     eval_set_syscall_table(ex, st);
+    scall_count = 0;
 
     opcode code[] = {   OP_NOOP, 
-                        OP_ARGS_LOCALS, 0x00, 0x01,
-                        OP_LOAD_INT, 0x00, 0xff, 0xff, 0xff, 0xff,
+                        OP_ARGS_LOCALS, 0x00, 0x03,
+                        OP_LOAD_STRING, 0x00, 0x06, 0x00, 's', 'y', 's', '_', 't', '0',
+                        OP_LOAD_STRING, 0x01, 0x06, 0x00, 's', 'y', 's', '_', 't', '1',
+                        OP_LOAD_INT, 0x02, 0x05, 0x00, 0x00, 0x00,
                         OP_PUSH, 0x00,
                         OP_SYSCALL, 0x00,
+                        OP_PUSH, 0x01,
+                        OP_PUSH, 0x02,
+                        OP_SYSCALL, 0x01,
                         OP_HALT};
 
-    ck_assert_msg(t0_count == 0, "syscall test pre-condition not met");
+    ck_assert_msg(scall_count == 0, "syscall test pre-condition not met");
     eval_exec(ex, code);
-    // failing at moment ck_assert_msg(t0_count == 1, "syscall not executed as expected");
+    ck_assert_msg(scall_count == 6, "syscall not executed as expected");
 
     eval_free_ctx(ex);
     syscall_table_free(st);

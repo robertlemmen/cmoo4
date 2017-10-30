@@ -161,16 +161,21 @@ void exec_run(struct exec_ctx *ectx, val method, int num_args, ...);
 void eval_set_dbg_handler(struct eval_ctx *ctx, 
     void (*callback)(val v, void *a), 
     void *a);
+
 // debug clutch to allow direct execution of code without objects and the like.
 // This is only used by test drivers and debug code, not by an actual CMOO server
 void eval_exec(struct eval_ctx *ctx, opcode *code);
 
+// XXX we will need some context object to pass around, perhaps store in the sycall table and
+// pass a syscall table ptr to each callback?
 struct syscall_table* syscall_table_new(void);
 void syscall_table_free(struct syscall_table *st);
+// set a context object that is being passed into each sycall invocation
+void syscall_table_set_ctx(struct syscall_table *st, void *ctx);
 
-void syscall_table_add_a0(struct syscall_table *st, char *name, val (*syscall)(void));
-void syscall_table_add_a1(struct syscall_table *st, char *name, val (*syscall)(val v1));
-void syscall_table_add_a2(struct syscall_table *st, char *name, val (*syscall)(val v1, val v2));
+void syscall_table_add_a0(struct syscall_table *st, char *name, val (*syscall)(void*));
+void syscall_table_add_a1(struct syscall_table *st, char *name, val (*syscall)(void*, val v1));
+void syscall_table_add_a2(struct syscall_table *st, char *name, val (*syscall)(void*, val v1, val v2));
 
 void eval_set_syscall_table(struct eval_ctx *ctx, struct syscall_table *st);
 

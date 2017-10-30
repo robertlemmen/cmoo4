@@ -79,17 +79,22 @@ void vm_eval_ctx_exec(struct eval_ctx *ex, val method, int num_args, ...) {
             && (num_args == 1) && (val_type(arg0) == TYPE_SPECIAL)) {
         printf("#   0::init\n");
         tasks_ctx = val_get_special(arg0);
+        // XXX also set up syscalls
+
+        // XXX use syscall here
         tasks_net_make_listener(tasks_ctx, 12345, 11);
     }
     else if ((oid == 0) && (strcmp(val_get_string_data(method), "shutdown") == 0)
             && (num_args == 0)) {
         printf("#   0::shutdown\n");
+        // XXX use syscall here
         tasks_net_shutdown_listener(tasks_ctx, 12345);
     }
     else if ((oid == 11) && (strcmp(val_get_string_data(method), "accept") == 0)
             && (num_args == 1) && (val_type(arg0) == TYPE_SPECIAL)) {
         printf("#   11::accept\n");
         sockets[socket_oid_seq] = arg0;
+        // XXX use syscall here
         tasks_net_accept_socket(tasks_ctx, val_get_special(arg0), socket_oid_seq);
         socket_oid_seq++;
     }
@@ -100,12 +105,14 @@ void vm_eval_ctx_exec(struct eval_ctx *ex, val method, int num_args, ...) {
     else if ((oid >= 111) && (strcmp(val_get_string_data(method), "closed") == 0)
             && (num_args == 1) && (val_type(arg0) == TYPE_SPECIAL)) {
         printf("#   %li::closed\n", oid);
+        // XXX use syscall here
         tasks_net_socket_free(tasks_ctx, val_get_special(arg0));
     }
     else if ((oid >= 111) && (strcmp(val_get_string_data(method), "read") == 0)
             && (num_args == 2) && (val_type(arg0) == TYPE_SPECIAL)
             && (val_type(arg1) == TYPE_STRING)) {
         printf("#   %li::read %s\n", oid, val_get_string_data(arg1));
+        // XXX use syscall here
         tasks_net_socket_write(tasks_ctx,
             val_get_special(sockets[oid]),
             val_get_special(arg0),
