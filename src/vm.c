@@ -31,29 +31,34 @@ struct vm_eval_ctx {
 
 // -------- internal functions ------------
 
-void syscall_net_make_listener(void *ctx, val port, val oid) {
+val syscall_net_make_listener(void *ctx, val port, val oid) {
     struct tasks_ctx *tasks_ctx = (struct tasks_ctx*)ctx;
     tasks_net_make_listener(tasks_ctx, val_get_int(port), val_get_objref(oid));
+    return val_make_nil();
 }
 
-void syscall_net_shutdown_listener(void *ctx, val port) {
+val syscall_net_shutdown_listener(void *ctx, val port) {
     struct tasks_ctx *tasks_ctx = (struct tasks_ctx*)ctx;
     tasks_net_shutdown_listener(tasks_ctx, val_get_int(port));
+    return val_make_nil();
 }
 
-void syscall_net_accept_socket(void *ctx, val socket, val oid) {
+val syscall_net_accept_socket(void *ctx, val socket, val oid) {
     struct tasks_ctx *tasks_ctx = (struct tasks_ctx*)ctx;
     tasks_net_accept_socket(tasks_ctx, val_get_special(socket), val_get_objref(oid));
+    return val_make_nil();
 }
 
-void syscall_net_socket_free(void *ctx, val socket) {
+val syscall_net_socket_free(void *ctx, val socket) {
     struct tasks_ctx *tasks_ctx = (struct tasks_ctx*)ctx;
     tasks_net_socket_free(tasks_ctx, val_get_special(socket));
+    return val_make_nil();
 }
 
-void syscall_net_socket_write(void *ctx, val socket, val tx, val data) {
+val syscall_net_socket_write(void *ctx, val socket, val tx, val data) {
     struct tasks_ctx *tasks_ctx = (struct tasks_ctx*)ctx;
     tasks_net_socket_write(tasks_ctx, val_get_special(socket), val_get_special(tx), val_get_string_data(data), val_get_string_len(data));
+    return val_make_nil();
 }
 
 // -------- implementation of public functions --------
@@ -75,6 +80,16 @@ void vm_free(struct vm *v) {
     free(v);
 }
 
+void vm_init(struct vm *v, struct tasks_ctx *tc) {
+    printf("# vm_init\n");
+    syscall_table_set_ctx(v->syscalls, tc);
+    struct vm_eval_ctx *ec = vm_get_eval_ctx(v, 0, 0);
+    // XXX the args are stubby, just needed until we have a more complete core with globals and
+    // objject creation
+    vm_eval_ctx_exec(ec, val_make_string(4, "init"), 1, val_make_objref(11));
+    vm_free_eval_ctx(ec);
+}
+
 struct vm_eval_ctx* vm_get_eval_ctx(struct vm *v, object_id id, uint64_t task_id) {
     struct vm_eval_ctx *ret = malloc(sizeof(struct vm_eval_ctx));
     ret->v = v;
@@ -83,7 +98,7 @@ struct vm_eval_ctx* vm_get_eval_ctx(struct vm *v, object_id id, uint64_t task_id
     ret->start_obj = store_get_object(ret->stx, id);
     printf("# vm_get_eval_ctx %li -> %p\n", id, ret);
 
-    ret->eval_ctx = eval_new_ctx();
+    ret->eval_ctx = eval_new_ctx(task_id);
     eval_set_syscall_table(ret->eval_ctx, v->syscalls);
 
     // XXX more, need lock implementation
@@ -121,39 +136,17 @@ void vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...) {
 
     // XXX pseudo-core
     if ((oid == 0) && (strncmp(val_get_string_data(method), "init", 4) == 0)
-            && (num_args == 1) && (val_type(arg0) == TYPE_SPECIAL)) {
+            && (num_args == 1)) {
         printf("#   0::init\n");
-        tasks_ctx = val_get_special(arg0);
-        syscall_table_set_ctx(ex->v->syscalls, tasks_ctx);
-
-        opcode code[] = {
-                            OP_ARGS_LOCALS, 0x01, 0x02,
-                            OP_LOAD_STRING, 0x01, 0x11, 0x00, 'n', 'e', 't', '_', 'm', 'a', 'k', 'e', '_', 'l', 'i', 's', 't', 'e', 'n', 'e', 'r',
-                            OP_LOAD_INT, 0x02, 0x39, 0x30, 0x00, 0x00,
-                            OP_PUSH, 0x01,
-                            OP_PUSH, 0x02,
-                            OP_PUSH, 0x00,
-                            OP_SYSCALL, 0x02,
-                            OP_HALT};
-
-        eval_push_arg(ex->eval_ctx, val_make_objref(11));
-        eval_exec(ex->eval_ctx, code);
+        // XXX some weirdness around variadic handoff https://stackoverflow.com/questions/150543/forward-an-invocation-of-a-variadic-function-in-c
+        eval_exec_method(ex->eval_ctx, ex->start_obj, method, 1, arg0);
 
     }
     else if ((oid == 0) && (strncmp(val_get_string_data(method), "shutdown", 8) == 0)
             && (num_args == 0)) {
         printf("#   0::shutdown\n");
 
-        opcode code[] = {
-                            OP_ARGS_LOCALS, 0x00, 0x03,
-                            OP_LOAD_STRING, 0x00, 0x15, 0x00, 'n', 'e', 't', '_', 's', 'h', 'u', 't', 'd', 'o', 'w', 'n', '_', 'l', 'i', 's', 't', 'e', 'n', 'e', 'r',
-                            OP_LOAD_INT, 0x01, 0x39, 0x30, 0x00, 0x00,
-                            OP_PUSH, 0x00,
-                            OP_PUSH, 0x01,
-                            OP_SYSCALL, 0x01,
-                            OP_HALT};
-
-        eval_exec(ex->eval_ctx, code);
+        eval_exec_method(ex->eval_ctx, ex->start_obj, method, 0);
     }
     else if ((oid == 11) && (strncmp(val_get_string_data(method), "accept", 6) == 0)
             && (num_args == 1) && (val_type(arg0) == TYPE_SPECIAL)) {
@@ -223,5 +216,6 @@ void vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...) {
         printf("#  unhandled call to core!\n");
     }
 
+    va_end(argp);
     store_finish_tx(ex->stx);
 }

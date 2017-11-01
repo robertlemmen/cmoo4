@@ -2,13 +2,16 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 // XXX
 #include <stdio.h>
 
 #include "types.h"
+#include "object.h"
 
 #define INITIAL_STACK_SIZE  1024
 
+// XXX why do we have this union and not just a stack of val's???
 union stack_element {
     val val;
     union stack_element *se;
@@ -44,9 +47,10 @@ struct eval_ctx {
     void *cb_arg;
     // syscall table
     struct syscall_table *syscall_table;
+    uint64_t task_id;
 };
 
-struct eval_ctx* eval_new_ctx(void) {
+struct eval_ctx* eval_new_ctx(uint64_t task_id) {
     struct eval_ctx *ret = malloc(sizeof(struct eval_ctx));
     ret->stack = malloc(sizeof(union stack_element) * INITIAL_STACK_SIZE);
     ret->stack_top = ret->stack 
@@ -58,6 +62,7 @@ struct eval_ctx* eval_new_ctx(void) {
     ret->sp = ret->stack;
     ret->callback = NULL;
     ret->syscall_table = NULL;
+    ret->task_id = task_id;
     return ret;
 }
 
@@ -281,7 +286,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             ip += 2;
             printf("| LOAD_STRING r0x%02X <- %2i ???      |\n", reg, len);
             val_clear(&ctx->fp[reg].val);
-            ctx->fp[reg].val = val_make_string(len, ip);
+            ctx->fp[reg].val = val_make_string(len, (char*)ip);
             ip += len;
             DISPATCH();
         }
@@ -834,6 +839,27 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         }
     }
     // XXX val_clear the whole stack
+}
+
+void eval_exec_method(struct eval_ctx *ctx, struct object *obj, val method, int num_args, ...) {
+    // XXX find method on object, load code, push args and exec
+    // XXX ...for now, this isn't quite right around globals and an object stack
+
+    va_list argp;
+    va_start(argp, num_args);
+    while (num_args--) {
+        eval_push_arg(ctx, va_arg(argp, val));
+    }
+
+    opcode *code;
+    int ret = obj_get_code(obj, val_get_string_data(method), &code);
+    if (ret) {
+        eval_exec(ctx, code);
+    }
+    else {
+        // XXX raise
+        printf("!! method '%s' not found on object %li\n", val_get_string_data(method), obj_get_id(obj));
+    }
 }
 
 void eval_push_arg(struct eval_ctx *ctx, val v) {

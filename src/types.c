@@ -47,8 +47,9 @@ val val_make_float(float i) {
 }
 
 val val_make_string(uint16_t len, char *s) {
-    struct heap_string *hs = malloc(len + sizeof(uint16_t) * 2);
+    struct heap_string *hs = malloc(len + sizeof(uint16_t) * 2 + 1);
     memcpy(hs->data, s, len);
+    hs->data[len] = '\0';
     hs->ref_count = 1;
     hs->length = len;
     uint64_t ret = (uint64_t)hs;

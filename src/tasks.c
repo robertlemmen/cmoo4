@@ -178,7 +178,7 @@ void* tasks_thread_func(void *arg) {
         // do first step of processing that requires lock to be held
         switch (current_item->type) {
             case QUEUE_TYPE_INIT:
-                vm_eval_ctx = vm_get_eval_ctx(ctx->vm, 0, task_id);
+                vm_init(ctx->vm, ctx);
                 break;
             case QUEUE_TYPE_LISTEN_ERROR:
                 vm_eval_ctx = vm_get_eval_ctx(ctx->vm, current_item->listen_error_data.oid, task_id);
@@ -208,10 +208,7 @@ void* tasks_thread_func(void *arg) {
         val slot;
         switch (current_item->type) {
             case QUEUE_TYPE_INIT:
-                slot = val_make_string(4, "init");
-                vm_eval_ctx_exec(vm_eval_ctx, slot, 1,
-                    val_make_special(ctx));
-                val_dec_ref(slot);
+                // handled within lock above
                 break;
             case QUEUE_TYPE_LISTEN_ERROR:
                 slot = val_make_string(5, "error");
@@ -257,7 +254,9 @@ void* tasks_thread_func(void *arg) {
 
         // commit network transaction
         ntx_commit_tx(net_tx);
-        vm_free_eval_ctx(vm_eval_ctx);
+        if (vm_eval_ctx) {
+            vm_free_eval_ctx(vm_eval_ctx);
+        }
         free(current_item);
     }
 

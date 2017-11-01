@@ -3,10 +3,9 @@ C M O O   T O D O
 
 next main jobs
 --------------
-- vm pseudo-core to fetch objects and lock them, but still use the pseudo-core
-  for actual execution
-  - stub locking
-  - stub persistence
+- new object creation in bytecode, oid to be use in call to net_make_listener from bytecode
+  we can then remove the 0::init special args in vm
+- more work to remove all the per-object/method cases in the vm and just call into eval
 - eval work and assembler to allow echo server in actual bytecode
   - current opcodes support for strings
   - call/return, requires stub object stuff
@@ -16,7 +15,9 @@ next main jobs
 
 after basic case works
 ----------------------
+- error handling in eval.c
 - support for multiple threads
+- load objects from file
 - hashes/arrays
 - div/idiv/mod
 - jump_eq, jump_ne, jump_le, jump_lt

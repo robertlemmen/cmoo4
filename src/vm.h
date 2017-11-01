@@ -13,15 +13,14 @@
 struct vm;
 struct vm_eval_ctx;
 struct store;
+struct tasks_ctx;
 
 struct vm* vm_new(struct store *s);
 void vm_free(struct vm *v);
 
-// XXX needs task id or so to make sure older younger threads get faulted 
-// out of deadlocks
-// XXX vm also needs link to net/ntx
+void vm_init(struct vm *v, struct tasks_ctx *tc);
+
 struct vm_eval_ctx* vm_get_eval_ctx(struct vm *v, object_id id, uint64_t task_id);
-// XXX missing arguments for slot to call and arguments
 void vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...);
 void vm_free_eval_ctx(struct vm_eval_ctx *ex);
 

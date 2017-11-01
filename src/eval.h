@@ -136,24 +136,11 @@
 // XXX more ops
 
 struct eval_ctx;
-struct exec_ctx;
 
 struct syscall_table;
 
-struct eval_ctx* eval_new_ctx(void);
+struct eval_ctx* eval_new_ctx(uint64_t task_id);
 void eval_free_ctx(struct eval_ctx *ctx);
-
-// XXX two functions to actually run code in the vm: the first one is quick and creates 
-// an execution context from an eval_ctx and a objref. it "just" gets a locked version 
-// of the obj in question to make sure calls to evaluate are serialized properly. The 
-// second takes the exec_ctx and some arguments, and executes the code in question. this 
-// may take some time, cause I/O, lock, deadlock and what not...
-struct exec_ctx* eval_make_exec_ctx(struct eval_ctx *ctx, object_id oid);
-// the variadic part is num_args items of type "val", which get passed to the function
-// denoted by "method" on the object retrieved by "objref" on eval_make_exec_ctx.
-// This consumes the exec_ctx
-// XXX return value to signal success/error
-void exec_run(struct exec_ctx *ectx, val method, int num_args, ...);
 
 // set a callback that gets executed whenever OP_DEBUGI or OP_DEBUGR gets
 // executed, this mainly for testing. whenever the callback gets executed, the
@@ -162,21 +149,25 @@ void eval_set_dbg_handler(struct eval_ctx *ctx,
     void (*callback)(val v, void *a), 
     void *a);
 
+// execute a method on an object
+// XXX return success/error
+void eval_exec_method(struct eval_ctx *ctx, struct object *obj, val method, int num_args, ...);
+
 // debug clutch to allow direct execution of code without objects and the like.
 // This is only used by test drivers and debug code, not by an actual CMOO server
 void eval_exec(struct eval_ctx *ctx, opcode *code);
 void eval_push_arg(struct eval_ctx *ctx, val v);
 
-// XXX these are not used outside? perhaps hide?
+// create/destroy/get/set a syscall table
 struct syscall_table* syscall_table_new(void);
 void syscall_table_free(struct syscall_table *st);
-
 struct syscall_table* eval_get_syscall_table(struct eval_ctx *ctx);
 void eval_set_syscall_table(struct eval_ctx *ctx, struct syscall_table *st);
 
 // set a context object that is being passed into each sycall invocation
 void syscall_table_set_ctx(struct syscall_table *st, void *ctx);
 
+// add syscalls to table, by arity
 void syscall_table_add_a0(struct syscall_table *st, char *name, val (*syscall)(void*));
 void syscall_table_add_a1(struct syscall_table *st, char *name, val (*syscall)(void*, val v1));
 void syscall_table_add_a2(struct syscall_table *st, char *name, val (*syscall)(void*, val v1, val v2));
