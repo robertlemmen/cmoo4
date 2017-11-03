@@ -15,6 +15,8 @@ struct store {
     struct cache *cache;
     struct persist *persist;
     pthread_mutex_t cache_latch;
+    // XXX kludge, need better allocator with persistence integration
+    int alloc_id;
 };
 
 struct lobject_list_node {
@@ -38,7 +40,7 @@ struct store* store_new(struct persist *p) {
         fprintf(stderr, "pthread_mutex_init failed\n");
         exit(1);
     }
-
+    ret->alloc_id = 1000;
     return ret;
 }
 
@@ -65,7 +67,6 @@ void store_finish_tx(struct store_tx *tx) {
         tx->locked = temp->next;
         lock_unlock(lobject_get_lock(temp->lo));
         cache_release_object(s->cache, temp->lo);
-        printf("##   %li\n", obj_get_id(lobject_get_object(temp->lo)));
     }
     pthread_mutex_unlock(&s->cache_latch);
     free(tx);
@@ -79,7 +80,6 @@ struct object* store_get_object(struct store_tx *tx, object_id oid) {
     lo = cache_get_object(s->cache, oid);
 
     if (lo == NULL) {
-        printf("##   getting from persistence\n");
         struct object *po = persist_get(s->persist, oid);
         // XXX not sure what to do in this case...
         assert(po != NULL);
@@ -88,9 +88,6 @@ struct object* store_get_object(struct store_tx *tx, object_id oid) {
         lobject_set_object(lo, po);
         lobject_set_lock(lo, l);
         cache_put_object(s->cache, lo);
-    }
-    else {
-        printf("##   found cached\n");
     }
 
     lock_lock(lobject_get_lock(lo));
@@ -104,5 +101,31 @@ struct object* store_get_object(struct store_tx *tx, object_id oid) {
     tx->locked = list_node;
 
     return lobject_get_object(lo);
+}
+
+struct object* store_make_object(struct store_tx *tx, object_id parent_id) {
+    printf("## store_make_object %li\n", parent_id);
+    struct store *s = tx->store;
+    pthread_mutex_lock(&s->cache_latch);
+    struct object *obj = obj_new();
+    obj_set_id(obj, s->alloc_id++);
+    obj_add_parent(obj, parent_id);
+    struct lock *l = lock_new();
+    struct lobject *lo = lobject_new();
+    lobject_set_object(lo, obj);
+    lobject_set_lock(lo, l);
+    cache_put_object(s->cache, lo);
+    lock_lock(lobject_get_lock(lo));
+    pthread_mutex_unlock(&s->cache_latch);
+    printf("##   -> %li\n", obj_get_id(obj));
+
+    // put in tx to release later
+    // XXX refactor into own method
+    struct lobject_list_node *list_node = malloc(sizeof(struct lobject_list_node));
+    list_node->lo = lo;
+    list_node->next = tx->locked;
+    tx->locked = list_node;
+
+    return obj;
 }
 

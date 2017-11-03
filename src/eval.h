@@ -6,11 +6,12 @@
 #include "object.h"
 
 /* the virtual machine in CMOO uses a stack where elements can be accessed 
- * indexed as well. to do this we have a stack pointer SP, a frame pointer FP
- * and an instruction pointer IP. The instructions are 1-octet in length but 
- * may be followed by variable length arguments. The VM executes the current 
- * opcode at IP and then increases IP accordingly. The instructions can 
- * modify SP (e.g. with PUSH, POP) or access cells relative to FP. a sample 
+ * in an indexed, register-like fashion as well. to do this we have a stack 
+ * pointer SP, a frame pointer FP and an instruction pointer IP. 
+ * The instructions are 1-octet in length but may be followed by variable 
+ * number of arguments. The VM executes the current opcode at IP and then 
+ * increases IP accordingly. The instructions can modify SP (e.g. with PUSH, 
+ * POP) or access cells relative to FP. a sample 
  * layout within a method call:
  *
  * | intermediate0  | <- SP
@@ -21,7 +22,7 @@
  * | return address 
  * | previous FP    |
  * | ...            |
- 
+ *
  * In this case the current method has been called with two arguments, and has
  * reserved one local variable (at FP[2]). the intermediate value has been 
  * created with e.g. PUSH. Note that the arguments, locals and intermediate 
@@ -29,10 +30,11 @@
  * addresses.
  *
  * When calling a method, the steck needs to have the arguments at the top, 
- * followed by a string naming the method and an objref naming the object to 
- * call on:
+ * followed by an ignored slot, a string naming the method and an objref naming 
+ * the object to call on:
  *
  * | argument0      | <- SP
+ * | <ignored>      |
  * | method name    |
  * | callee objref  |
  * | intermediate0  | 
@@ -45,12 +47,13 @@
  * | ...            |
  * 
  * the code then executes a "CALL nargs" where "nargs" is the number of 
- * arguments on the stack. The CALL opcode will overwrite the method name and 
- * objref before executing the callee, so the Stack, SP and FP in the called 
- * method look like this:
+ * arguments on the stack. The CALL opcode will overwrite the ignored slot, the 
+ * method name and objref before executing the callee, so the Stack, SP and FP 
+ * in the called method look like this:
  *
  * | argument0      | <- SP, FP
  * +----------------+
+ * | return object  |
  * | return address |
  * | previous FP    | --,
  * | intermediate0  |   |
@@ -61,9 +64,9 @@
  * | previous FP    |
  * | ...            |
  *
- * At some point the callee will call a "RETURN" instruction (of which there 
- * are several variants), which will restore the previous FP, put the 
- * returned value in the slot that contained it, and set SP to that as well:
+ * At some point the callee will call a "RETURN" instruction, which will 
+ * restore the previous FP, put the returned value in the slot that 
+ * contained it, and set SP to that as well:
  *
  * | returned value | <- SP
  * | intermediate0  | 
@@ -129,17 +132,23 @@
 #define OP_JUMP_LT          32 // if lt(reg8:src1, reg8:src2) then IP += int32:offset
 
 // XXX need to be reordered
-#define OP_SYSCALL          33 // int8:nargs
+#define OP_SYSCALL          33 // reg8:ret <= reg8:nargs, args consumed from stack
 #define OP_LENGTH           34 // reg8:dst <= strlen(reg8:src)
 #define OP_CONCAT           35 // reg8:dst <= concat(reg8:src1, reg8:src2)
+
+#define OP_GETGLOBAL        36 // reg8:ret <= reg8:name
+#define OP_SETGLOBAL        37 // reg8:name, reg8:val
+#define OP_MAKE_OBJ         38 // reg8:new_ref <= reg:parent_ref
+#define OP_SELF             39 // reg8:id <= ID of current object
 
 // XXX more ops
 
 struct eval_ctx;
 
 struct syscall_table;
+struct store_tx;
 
-struct eval_ctx* eval_new_ctx(uint64_t task_id);
+struct eval_ctx* eval_new_ctx(uint64_t task_id, struct store_tx *stx);
 void eval_free_ctx(struct eval_ctx *ctx);
 
 // set a callback that gets executed whenever OP_DEBUGI or OP_DEBUGR gets

@@ -69,7 +69,6 @@ struct lobject* cache_get_object(struct cache *c, object_id id) {
     struct cache_entry *ce = c->table[id % c->size];
     while (ce != NULL) {
         if (obj_get_id(lobject_get_object(ce->object)) == id) {
-            assert(!lobject_is_pinned(ce->object));
             lobject_pin(ce->object);
 
             // remove from recently-used linkedlist

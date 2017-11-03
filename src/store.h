@@ -18,7 +18,7 @@ struct store_tx;
 struct store* store_new(struct persist *p);
 void store_free(struct store *s);
 
-/* strta/finish a transaction, you need to explicitely finish a transaction even 
+/* start/finish a transaction, you need to explicitely finish a transaction even 
  * if it failed */
 struct store_tx* store_start_tx(struct store *s);
 void store_finish_tx(struct store_tx *tx);
@@ -28,6 +28,9 @@ void store_finish_tx(struct store_tx *tx);
 // XXX do we need to be able to distinguish between the two? surprisingly we might 
 // not: no-such-object should never happen and would be fatal as well..
 struct object* store_get_object(struct store_tx *tx, object_id oid);
+
+/* create a new, empty object with an initial parent link. the id is allocated */
+struct object* store_make_object(struct store_tx *tx, object_id parent_id);
 
 // XXX we need a way to write to an object, but only have the writable copy in the TX
 // until comitted

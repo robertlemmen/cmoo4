@@ -16,7 +16,10 @@ struct lock {
 
 struct lock* lock_new(void) {
     struct lock *ret = malloc(sizeof(struct lock));
-    if (pthread_mutex_init(&ret->latch, NULL) != 0) {
+    pthread_mutexattr_t attr;
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+    if (pthread_mutex_init(&ret->latch, &attr) != 0) {
         fprintf(stderr, "pthread_mutex_init failed\n");
         exit(1);
     }

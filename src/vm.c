@@ -24,7 +24,7 @@ struct vm_eval_ctx {
     struct vm *v;
     struct store_tx *stx;
     struct eval_ctx *eval_ctx;
-    // XXX for now, needs actual object reference instead
+    // XXX for now, we might want to store this on the stack instead
     struct object *start_obj;
     uint64_t task_id;
 };
@@ -85,9 +85,11 @@ void vm_init(struct vm *v, struct tasks_ctx *tc) {
     syscall_table_set_ctx(v->syscalls, tc);
     struct vm_eval_ctx *ec = vm_get_eval_ctx(v, 0, 0);
     // XXX the args are stubby, just needed until we have a more complete core with globals and
-    // objject creation
-    vm_eval_ctx_exec(ec, val_make_string(4, "init"), 1, val_make_objref(11));
+    // object creation
+    val method_name = val_make_string(4, "init");
+    vm_eval_ctx_exec(ec, method_name, 1, val_make_objref(11));
     vm_free_eval_ctx(ec);
+    val_dec_ref(method_name);
 }
 
 struct vm_eval_ctx* vm_get_eval_ctx(struct vm *v, object_id id, uint64_t task_id) {
@@ -98,7 +100,7 @@ struct vm_eval_ctx* vm_get_eval_ctx(struct vm *v, object_id id, uint64_t task_id
     ret->start_obj = store_get_object(ret->stx, id);
     printf("# vm_get_eval_ctx %li -> %p\n", id, ret);
 
-    ret->eval_ctx = eval_new_ctx(task_id);
+    ret->eval_ctx = eval_new_ctx(task_id, ret->stx);
     eval_set_syscall_table(ret->eval_ctx, v->syscalls);
 
     // XXX more, need lock implementation
@@ -115,105 +117,26 @@ void vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...) {
     va_list argp;
     va_start(argp, num_args);
 
-    static struct tasks_ctx *tasks_ctx;  // perhaps not needed anymore?
-    static long int socket_oid_seq = 111;
-
-    static val sockets[100];
-
     object_id oid = obj_get_id(ex->start_obj);
 
     printf("# vm_eval_ctx_exec %p oid=%li slot=%s num_args=%i\n", ex,
         oid, val_get_string_data(method), num_args);
 
-    val arg0;
-    if (num_args >= 1) {
-        arg0 = va_arg(argp, val);
-    }
-    val arg1;
-    if (num_args >= 2) {
-        arg1 = va_arg(argp, val);
-    }
-
-    // XXX pseudo-core
-    if ((oid == 0) && (strncmp(val_get_string_data(method), "init", 4) == 0)
-            && (num_args == 1)) {
-        printf("#   0::init\n");
-        // XXX some weirdness around variadic handoff https://stackoverflow.com/questions/150543/forward-an-invocation-of-a-variadic-function-in-c
-        eval_exec_method(ex->eval_ctx, ex->start_obj, method, 1, arg0);
-
-    }
-    else if ((oid == 0) && (strncmp(val_get_string_data(method), "shutdown", 8) == 0)
-            && (num_args == 0)) {
-        printf("#   0::shutdown\n");
-
+    // argh... http://c-faq.com/varargs/handoff.html
+    if (num_args == 0) {
         eval_exec_method(ex->eval_ctx, ex->start_obj, method, 0);
     }
-    else if ((oid == 11) && (strncmp(val_get_string_data(method), "accept", 6) == 0)
-            && (num_args == 1) && (val_type(arg0) == TYPE_SPECIAL)) {
-        printf("#   11::accept\n");
-        sockets[socket_oid_seq] = arg0;
-
-        opcode code[] = {
-                            OP_ARGS_LOCALS, 0x02, 0x01,
-                            OP_LOAD_STRING, 0x02, 0x11, 0x00, 'n', 'e', 't', '_', 'a', 'c', 'c', 'e', 'p', 't', '_', 's', 'o', 'c', 'k', 'e', 't',
-                            OP_PUSH, 0x02,
-                            OP_PUSH, 0x00,
-                            OP_PUSH, 0x01,
-                            OP_SYSCALL, 0x02,
-                            OP_HALT};
-
-        eval_push_arg(ex->eval_ctx, arg0);
-        eval_push_arg(ex->eval_ctx, val_make_objref(socket_oid_seq));
-        eval_exec(ex->eval_ctx, code);
-
-        socket_oid_seq++;
+    else if (num_args == 1) {
+        val arg0 = va_arg(argp, val);
+        eval_exec_method(ex->eval_ctx, ex->start_obj, method, 1, arg0);
     }
-    else if ((oid == 11) && (strncmp(val_get_string_data(method), "error", 5) == 0)
-            && (num_args == 1) && (val_type(arg0) == TYPE_INT)) {
-        printf("#   11::error %s\n", strerror(val_get_int(arg0)));
-    }
-    else if ((oid >= 111) && (strncmp(val_get_string_data(method), "closed", 6) == 0)
-            && (num_args == 1) && (val_type(arg0) == TYPE_SPECIAL)) {
-        printf("#   %li::closed\n", oid);
-
-        opcode code[] = {
-                            OP_ARGS_LOCALS, 0x01, 0x01,
-                            OP_LOAD_STRING, 0x01, 0x0F, 0x00, 'n', 'e', 't', '_', 's', 'o', 'c', 'k', 'e', 't', '_', 'f', 'r', 'e', 'e', 
-                            OP_PUSH, 0x01,
-                            OP_PUSH, 0x00,
-                            OP_SYSCALL, 0x01,
-                            OP_HALT};
-
-        eval_push_arg(ex->eval_ctx, arg0);
-        eval_exec(ex->eval_ctx, code);
-    }
-    else if ((oid >= 111) && (strncmp(val_get_string_data(method), "read", 4) == 0)
-            && (num_args == 2) && (val_type(arg0) == TYPE_SPECIAL)
-            && (val_type(arg1) == TYPE_STRING)) {
-        printf("#   %li::read %s\n", oid, val_get_string_data(arg1));
-
-        opcode code[] = {
-                            OP_ARGS_LOCALS, 0x03, 0x03,
-                            OP_LOAD_STRING, 0x03, 0x10, 0x00, 'n', 'e', 't', '_', 's', 'o', 'c', 'k', 'e', 't', '_', 'w', 'r', 'i', 't', 'e',
-                            OP_LOAD_STRING, 0x04, 0x02, 0x00, '>', ' ',
-                            OP_PUSH, 0x03,
-                            OP_PUSH, 0x00,
-                            OP_PUSH, 0x01,
-                            OP_CONCAT, 0x05, 0x04, 0x02,
-                            OP_PUSH, 0x05,
-                            OP_SYSCALL, 0x03,
-                            OP_HALT};
-
-        eval_push_arg(ex->eval_ctx, sockets[oid]);
-        eval_push_arg(ex->eval_ctx, arg0);
-        eval_push_arg(ex->eval_ctx, arg1);
-        eval_exec(ex->eval_ctx, code);
-    }
-    else if ((oid >= 111) ) {
-        printf("#   %li::something\n", oid);
+    else if (num_args == 2) {
+        val arg0 = va_arg(argp, val);
+        val arg1 = va_arg(argp, val);
+        eval_exec_method(ex->eval_ctx, ex->start_obj, method, 2, arg0, arg1);
     }
     else {
-        printf("#  unhandled call to core!\n");
+        printf("#  unsupported number of args in call to VM!\n");
     }
 
     va_end(argp);

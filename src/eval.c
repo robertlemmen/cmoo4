@@ -8,14 +8,17 @@
 
 #include "types.h"
 #include "object.h"
+#include "store.h"
 
 #define INITIAL_STACK_SIZE  1024
 
-// XXX why do we have this union and not just a stack of val's???
+// XXX this file needs reodering and sections
+
 union stack_element {
     val val;
     union stack_element *se;
     opcode *code;
+    struct object *obj;
 };
 
 struct syscall_entry {
@@ -48,9 +51,12 @@ struct eval_ctx {
     // syscall table
     struct syscall_table *syscall_table;
     uint64_t task_id;
+    struct store_tx *stx;
+    // XXX bit of a kludge, need to find a better way to recurse
+    struct object *obj;
 };
 
-struct eval_ctx* eval_new_ctx(uint64_t task_id) {
+struct eval_ctx* eval_new_ctx(uint64_t task_id, struct store_tx *stx) {
     struct eval_ctx *ret = malloc(sizeof(struct eval_ctx));
     ret->stack = malloc(sizeof(union stack_element) * INITIAL_STACK_SIZE);
     ret->stack_top = ret->stack 
@@ -63,6 +69,8 @@ struct eval_ctx* eval_new_ctx(uint64_t task_id) {
     ret->callback = NULL;
     ret->syscall_table = NULL;
     ret->task_id = task_id;
+    ret->stx = stx;
+    ret->obj = NULL;
     return ret;
 }
 
@@ -76,6 +84,21 @@ void eval_set_dbg_handler(struct eval_ctx *ctx,
 void eval_free_ctx(struct eval_ctx *ctx) {
     free(ctx->stack);
     free(ctx);
+}
+
+int eval_get_code_recursive(struct object *o, char *name, opcode **code_buf, struct store_tx *stx) {
+    // XXX this should really be BFS rather than DFS
+    int ret = obj_get_code(o, name, code_buf);
+    int idx = 0;
+    int pc = obj_get_parent_count(o);
+    while ((ret == 0) && (idx < pc)) {
+        object_id parent_id = obj_get_parent(o, idx);
+        struct object *parent = store_get_object(stx, parent_id);
+        // XXX assert it is non-null, should be
+        ret = eval_get_code_recursive(parent, name, code_buf, stx);
+        idx++;
+    }
+    return ret;
 }
 
 void eval_exec(struct eval_ctx *ctx, opcode *code) {
@@ -117,6 +140,10 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         &&do_syscall,
         &&do_length,
         &&do_concat,
+        &&do_getglobal,
+        &&do_setglobal,
+        &&do_make_obj,
+        &&do_self,
     };
     #define DISPATCH() goto *dispatch_table[*ip++]
 
@@ -147,7 +174,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         do_debugr: {
             uint8_t msg_r = *((uint8_t*)ip);
             ip += 1;
-            printf("| DEBUGR r0x%02X                     |\n", msg_r);
+            printf("| DEBUGR r0x%02X 0x%016lX  |\n", msg_r, ctx->fp[msg_r].val);
             if (&ctx->fp[msg_r] > ctx->sp) {
                 // XXX raise
                 printf("!! access to reg outside stack\n");
@@ -196,6 +223,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         do_pop: {
             uint8_t dst = *((uint8_t*)ip);
             ip += 1;
+            printf("| POP r0x%02X                        |\n", dst);
             if (&ctx->fp[dst] > ctx->sp) {
                 // XXX raise
                 printf("!! access to reg outside stack\n");
@@ -206,9 +234,46 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             DISPATCH();
         }
         do_call: {
+            uint8_t nargs = *((uint8_t*)ip);
+            ip += 1;
+            printf("| CALL %-4i                        |\n", nargs);
+            val method_name = ctx->sp[nargs * -1 -1].val;
+            val obj_ref = ctx->sp[nargs * -1 - 2].val;
+            // XXX assertions
+            // XXX we need to push obj on the stack as well!!
+            struct object *obj = store_get_object(ctx->stx, val_get_objref(obj_ref));
+            opcode *ccode;
+            int ret = eval_get_code_recursive(obj, val_get_string_data(method_name), &ccode, ctx->stx);
+            if (!ret) {
+                // XXX raise
+                printf("!! method not found\n");
+            }
+            val_dec_ref(ctx->sp[nargs * -1 - 2].val);
+            ctx->sp[nargs * -1 - 2].se = ctx->fp;
+            val_dec_ref(ctx->sp[nargs * -1 -1].val);
+            ctx->sp[nargs * -1 - 1].code = ip;
+            val_dec_ref(ctx->sp[nargs * -1].val);
+            ctx->sp[nargs * -1].obj = ctx->obj;
+            ctx->obj = obj;
+            ctx->fp = &ctx->sp[nargs * -1 + 1];
+            ip = ccode;
             DISPATCH();
         }
         do_return: {
+            uint8_t reg = *((uint8_t*)ip);
+            ip += 1;
+            printf("| RETURN r0x%02X                     |\n", reg);
+            val ret = ctx->fp[reg].val; 
+            union stack_element *old_fp = ctx->fp;
+            ctx->obj = old_fp[-1].obj;
+            ip = old_fp[-2].code;
+            ctx->fp = old_fp[-3].se;
+            old_fp[-3].val = ret;
+            val_inc_ref(ret);
+            while (ctx->sp > &old_fp[-3]) {
+                val_clear(&ctx->sp->val);
+                ctx->sp--;
+            }
             DISPATCH();
         }
         do_args_locals: {
@@ -741,6 +806,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
                     cse = cse->next;
                 }
                 if (se) {
+                    // XXX syscalls should leave their result on the stack
                     if (nargs == 0) {
                         se->funcptr.a0(ctx->syscall_table->ctx);
                     }
@@ -770,7 +836,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             }
             else {
                 // XXX raise
-                printf("!! parameter type mismatch\n");
+                printf("!! parameter type mismatch %i\n", val_type(syscall_name));
             }
             // XXX determine system call name and args from stack
             // XXX call it
@@ -837,6 +903,48 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             }
             DISPATCH();
         }
+        do_getglobal: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t name = *((uint8_t*)ip);
+            ip += 1;
+            printf("| GETGLOBAL r0x%02X r0x%02X            |\n", dst, name);
+            val tval = obj_get_global(ctx->obj, val_get_string_data(ctx->fp[name].val));
+            val_clear(&ctx->fp[dst].val);
+            ctx->fp[dst].val = tval;
+            DISPATCH();
+        }
+        do_setglobal: {
+            uint8_t name = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t rval = *((uint8_t*)ip);
+            ip += 1;
+            printf("| SETGLOBAL r0x%02X r0x%02X            |\n", name, rval);
+            obj_set_global(ctx->obj, val_get_string_data(ctx->fp[name].val), ctx->fp[rval].val);
+            DISPATCH();
+        }
+        do_make_obj: {
+            uint8_t new_ref = *((uint8_t*)ip);
+            ip += 1;
+            uint8_t parent_ref = *((uint8_t*)ip);
+            ip += 1;
+            printf("| MAKE_OBJ r0x%02X r0x%02X             |\n", new_ref, parent_ref);
+            // XXX assert parent_ref is an objref and that both are in range
+            struct object *obj = store_make_object(ctx->stx, val_get_objref(ctx->fp[parent_ref].val));
+            val_clear(&ctx->fp[new_ref].val);
+            ctx->fp[new_ref].val = val_make_objref(obj_get_id(obj));
+            DISPATCH();
+        }
+        do_self: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            printf("| SELF r0x%02X                       |\n", dst);
+            // XXX check in range
+            val_clear(&ctx->fp[dst].val);
+            ctx->fp[dst].val = val_make_objref(obj_get_id(ctx->obj));
+            // XXX
+            DISPATCH();
+        }
     }
     // XXX val_clear the whole stack
 }
@@ -852,8 +960,9 @@ void eval_exec_method(struct eval_ctx *ctx, struct object *obj, val method, int 
     }
 
     opcode *code;
-    int ret = obj_get_code(obj, val_get_string_data(method), &code);
+    int ret = eval_get_code_recursive(obj, val_get_string_data(method), &code, ctx->stx);
     if (ret) {
+        ctx->obj = obj;
         eval_exec(ctx, code);
     }
     else {

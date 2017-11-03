@@ -1,5 +1,6 @@
 WARN=-Wall -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes 
-CFLAGS=-g $(WARN) -std=c11 -pthread
+# XXX _GNU_SOURCE is for recursive pthread locks, which we may not need for too long
+CFLAGS=-g $(WARN) -std=c11 -pthread -D_GNU_SOURCE
 CINCFLAGS=
 LDFLAGS=-lev
 CC=gcc

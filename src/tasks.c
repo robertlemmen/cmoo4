@@ -170,7 +170,7 @@ void* tasks_thread_func(void *arg) {
         // determine a task_id for transaction priorities
         uint64_t task_id = ctx->task_id_seq++;
 
-        struct vm_eval_ctx *vm_eval_ctx;
+        struct vm_eval_ctx *vm_eval_ctx = NULL;
 
         // XXX all this processing needs to be aware of TX rollbacks and
         // retry if necessary
@@ -235,10 +235,13 @@ void* tasks_thread_func(void *arg) {
                 // charset.
                 // XXX strings require to be null-terminated, not 100%
                 // sure that is really guaranteed at the moment...
+                val data = val_make_string(current_item->read_data.size, current_item->read_data.buf);
                 vm_eval_ctx_exec(vm_eval_ctx, slot, 2,
-                    val_make_special(net_tx),
-                    val_make_string(strlen(current_item->read_data.buf), current_item->read_data.buf));
+                    val_make_special(net_tx),   // XXX is this the right way to pass net_tx into the vm?
+                                                // should it not be doen the same way as the store_tx?
+                    data);
                 val_dec_ref(slot);
+                val_dec_ref(data);
                 // XXX for now
                 free(current_item->read_data.buf);
                 break;
