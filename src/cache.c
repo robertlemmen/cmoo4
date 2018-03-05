@@ -61,7 +61,12 @@ struct cache* cache_new(int initial_size) {
 
 void cache_free(struct cache *c) {
     free(c->table);
-    // XXX also free entries
+    while (c->oldest) {
+        struct cache_entry *ce = c->oldest;
+        c->oldest = ce->newer;
+        // XXX free object?
+        free(ce);
+    }
     free(c);
 }
 
@@ -111,6 +116,7 @@ void cache_put_object(struct cache *c, struct lobject *o) {
     if (c->slots_used > c->size * LOAD_FACTOR) {
         cache_resize(c);
     }
+    // XXX newer and older are never set...
 }
 
 void cache_release_object(struct cache *c, struct lobject *o) {

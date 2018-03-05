@@ -140,6 +140,9 @@
 #define OP_SETGLOBAL        37 // reg8:name, reg8:val
 #define OP_MAKE_OBJ         38 // reg8:new_ref <= reg:parent_ref
 #define OP_SELF             39 // reg8:id <= ID of current object
+// XXX this is a stopgap, we could have multiple parents. but until we have
+// lists...
+#define OP_PARENT           40 // reg8:id <= ID of first parent or NIL if no parent
 
 // XXX more ops
 

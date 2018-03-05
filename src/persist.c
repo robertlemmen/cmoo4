@@ -37,25 +37,50 @@ struct persist* persist_new(void) {
     struct persist *ret = malloc(sizeof(struct persist));
     ret->objects = NULL;
 
-    struct object *o;
     // XXX stubby shit
     // XXX this could be split into the root object, a base listener, and a base
-    // client handler!
-    o = mk_duff_object(ret, 0);
+    // client handler, driving some structural changes throughout the code. in
+    // the first instance the IDs of the other objects could be hard-coded as
+    // numbers in the object code, in the next step they should be injected as
+    // object slots, 
+    
+
+    // object 0 is the root object, the driver calls "init" and "shutdown" on
+    // it. on init, the object will set up a listening socket and bind it to
+    // an newly created child object based on the base-listener (see below).
+    struct object *o0 = mk_duff_object(ret, 0);
     opcode code[] = {
                         OP_ARGS_LOCALS, 0x01, 0x02,
                         OP_LOAD_STRING, 0x01, 0x11, 0x00, 'n', 'e', 't', '_', 'm', 'a', 'k', 'e', '_', 'l', 'i', 's', 't', 'e', 'n', 'e', 'r',
-                        OP_LOAD_INT, 0x02, 0x39, 0x30, 0x00, 0x00,
+                        OP_LOAD_INT, 0x02, 0x39, 0x30, 0x00, 0x00, // 0x3039 is port 12345
                         OP_PUSH, 0x01,
                         OP_PUSH, 0x02,
-                        OP_SELF, 0x00,
+                        OP_LOAD_STRING, 0x00, 0x0D, 0x00, 'b', 'a', 's', 'e', '-', 'l', 'i', 's', 't', 'e', 'n', 'e', 'r',
+                        OP_GETGLOBAL, 0x00, 0x00,
                         OP_MAKE_OBJ, 0x00, 0x00,
                         OP_PUSH, 0x00,
                         OP_SYSCALL, 0x02,
+                        // call the new object and pass the
+                        // base-socket-handler reference
+                        OP_LOAD_STRING, 0x01, 0x13, 0x00, 'b', 'a', 's', 'e', '-', 's', 'o', 'c', 'k', 'e', 't', '-', 'h', 'a', 'n', 'd', 'l', 'e', 'r', 
+                        OP_GETGLOBAL, 0x01, 0x01,
+                        OP_LOAD_STRING, 0x02, 0x17, 0x00, 's', 'e', 't', '-', 'b', 'a', 's', 'e', '-', 's', 'o', 'c', 'k', 'e', 't', '-', 'h', 'a', 'n', 'd', 'l', 'e', 'r',
+                        OP_DEBUGR, 0x02,
+                        OP_DEBUGR, 0x01,
+                        OP_DEBUGR, 0x00,
+                        OP_PUSH, 0x00,
+                        OP_PUSH, 0x02,
+                        OP_PUSH, 0x01, // ignored slot
+                        OP_PUSH, 0x01,
+                        OP_CALL, 0x01,
+                        OP_POP, 0x00,
+                        OP_DEBUGR, 0x00,
                         OP_HALT};
-    obj_set_code(o, "init", code, sizeof(code));
+    obj_set_code(o0, "init", code, sizeof(code));
 
     opcode code2[] = {
+                        // XXX this should really delegate the shutdown code to
+                        // the listener object created in "init"
                         OP_ARGS_LOCALS, 0x00, 0x03,
                         OP_LOAD_STRING, 0x00, 0x15, 0x00, 'n', 'e', 't', '_', 's', 'h', 'u', 't', 'd', 'o', 'w', 'n', '_', 'l', 'i', 's', 't', 'e', 'n', 'e', 'r',
                         OP_LOAD_INT, 0x01, 0x39, 0x30, 0x00, 0x00,
@@ -63,13 +88,23 @@ struct persist* persist_new(void) {
                         OP_PUSH, 0x01,
                         OP_SYSCALL, 0x01,
                         OP_HALT};
-    obj_set_code(o, "shutdown", code2, sizeof(code2));
+    obj_set_code(o0, "shutdown", code2, sizeof(code2));
+    obj_set_global(o0, "base-listener", val_make_objref(1));
+    obj_set_global(o0, "base-socket-handler", val_make_objref(2));
 
+    // object 1 is the base-listener, it reacts to "accept" calls by setting up
+    // an object that handles the socket in question 
+    struct object *o1 = mk_duff_object(ret, 1);
     opcode code3[] = {
                         OP_ARGS_LOCALS, 0x01, 0x03,
-                        OP_SELF, 0x02,
+
+                        OP_LOAD_STRING, 0x02, 0x13, 0x00, 'b', 'a', 's', 'e', '-', 's', 'o', 'c', 'k', 'e', 't', '-', 'h', 'a', 'n', 'd', 'l', 'e', 'r',
+                        OP_GETGLOBAL, 0x02, 0x02,
+                        OP_DEBUGR, 0x02,
                         OP_MAKE_OBJ, 0x02, 0x02,
 
+                        // call the newly created object and pass the socket
+                        // special
                         OP_PUSH, 0x02,
                         OP_LOAD_STRING, 0x03, 0x0A, 0x00, 's', 'e', 't', '_', 's', 'o', 'c', 'k', 'e', 't',
                         OP_PUSH, 0x03,
@@ -78,35 +113,47 @@ struct persist* persist_new(void) {
                         OP_PUSH, 0x00,
                         OP_CALL, 0x01,
                         OP_POP, 0x03,
-                        OP_NOOP,
+
 
                         OP_LOAD_STRING, 0x01, 0x11, 0x00, 'n', 'e', 't', '_', 'a', 'c', 'c', 'e', 'p', 't', '_', 's', 'o', 'c', 'k', 'e', 't',
                         OP_PUSH, 0x01,
                         OP_PUSH, 0x00,
                         OP_PUSH, 0x02,
-                        OP_DEBUGR, 0x02,
                         OP_SYSCALL, 0x02,
+
                         OP_HALT};
-    obj_set_code(o, "accept", code3, sizeof(code3));
+    obj_set_code(o1, "accept", code3, sizeof(code3));
 
     opcode code4[] = {
+                        OP_ARGS_LOCALS, 0x01, 0x01,
+                        OP_LOAD_STRING, 0x01, 0x13, 0x00, 'b', 'a', 's', 'e', '-', 's', 'o', 'c', 'k', 'e', 't', '-', 'h', 'a', 'n', 'd', 'l', 'e', 'r',
+                        OP_SETGLOBAL, 0x01, 0x00,
+                        OP_CLEAR, 0x01,
+                        OP_RETURN, 0x01};
+
+    obj_set_code(o1, "set-base-socket-handler", code4, sizeof(code4));
+
+    // object 2 is a parent to all socket handlers, reacts to 'read' and 'closed'
+    // calls
+    struct object *o2 = mk_duff_object(ret, 2);
+    opcode code5[] = {
                         OP_ARGS_LOCALS, 0x01, 0x01,
                         OP_LOAD_STRING, 0x01, 0x06, 0x00, 's', 'o', 'c', 'k', 'e', 't',
                         OP_SETGLOBAL, 0x01, 0x00,
                         OP_CLEAR, 0x01,
                         OP_RETURN, 0x01};
-    obj_set_code(o, "set_socket", code4, sizeof(code4));
+    obj_set_code(o2, "set_socket", code5, sizeof(code5));
 
-    opcode code5[] = {
+    opcode code6[] = {
                         OP_ARGS_LOCALS, 0x01, 0x01,
                         OP_LOAD_STRING, 0x01, 0x0F, 0x00, 'n', 'e', 't', '_', 's', 'o', 'c', 'k', 'e', 't', '_', 'f', 'r', 'e', 'e', 
                         OP_PUSH, 0x01,
                         OP_PUSH, 0x00,
                         OP_SYSCALL, 0x01,
                         OP_HALT};
-    obj_set_code(o, "closed", code5, sizeof(code5));
+    obj_set_code(o2, "closed", code6, sizeof(code6));
 
-    opcode code6[] = {
+    opcode code7[] = {
                         OP_ARGS_LOCALS, 0x02, 0x04,
                         OP_DEBUGR, 0x00,
                         OP_DEBUGR, 0x01,
@@ -122,12 +169,18 @@ struct persist* persist_new(void) {
                         OP_PUSH, 0x05,
                         OP_SYSCALL, 0x03,
                         OP_HALT};
-    obj_set_code(o, "read", code6, sizeof(code6));
+    obj_set_code(o2, "read", code7, sizeof(code7));
 
     return ret;
 }
 
 void persist_free(struct persist *p) {
+    while (p->objects) {
+        struct object_list_node *t = p->objects;
+        p->objects = t->next;
+        obj_free(t->object);
+        free(t);
+    }
     free(p);
 }
 

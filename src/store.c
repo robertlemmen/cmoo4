@@ -67,6 +67,7 @@ void store_finish_tx(struct store_tx *tx) {
         tx->locked = temp->next;
         lock_unlock(lobject_get_lock(temp->lo));
         cache_release_object(s->cache, temp->lo);
+        free(temp);
     }
     pthread_mutex_unlock(&s->cache_latch);
     free(tx);
