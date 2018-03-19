@@ -1,0 +1,105 @@
+CMOO C
+======
+
+The "cmoo c" language is used to define a set of objects (a "core") that can be
+loaded into the cmoo driver to bootstrap an environment, but also when editing
+methods from within a running core. The second use case is a special case of the
+first, simply because the top-level entity being compiled is a single slot,
+not a set of objects. The other difference is that in the out-of-core
+compilation mode, references to other objects can be kept, and there is a
+literal for these object references. In the in-core compilation mode, references
+to objects cannot be expressed as a literal.
+
+Whitespace is not significant between tokens, and all words used as tokens in
+the grammar below are reserved and cannot be used as symbols.
+
+compilation units
+-----------------
+In order to make compilation more incremental, a core can be split into multiple
+compilation units, each residing in a single file. Each compilation unit can be
+compiled independently, but the rsulting objects need to be assembled together
+into a core before they can be used. During this phase, references between
+compilation units are resolved.
+
+The grammar below is in some sort of pseudo-bnf, you'll work it out...
+
+CompUnit = 'CompUnit' Symbol ';' { ObjectDefinition }
+
+ObjectDefinition = [ 'Exported' ] 'Object' ObjectSymbol '{' { Global } { Slot } '}'
+
+Global = 'Global' Symbol = Literal ';'
+
+Slot = 'Slot' Symbol '(' [ ArgList ] ')' '{' { Statement } '}'
+
+ArgList = Symbol { ',' Symbol }
+
+Statement = VarDeclaration
+          | Assignment
+          | Block
+          | ReturnStmt
+          | IfStmt
+          | WhileStmt
+          | DoWhileStmt
+          | SwitchStmt
+          | ForListStmt
+          | ForLoopStmt
+ 
+VarDeclaration = 'Var' Symbol [ '=' Expression ] ';'
+
+Assignment = ( Symbol | LocalSymbol ) '=' Expression ';'
+
+Block = '{' { Statement } '}'
+
+ReturnStmt = 'Return' Expression ';'
+
+IfStmt = 'If' Expression '{' { Statement } '}'
+         { 'Else' 'If' Expression '{' { Statement } '}' }
+         [ 'Else' '{' { Statement } '}'
+
+WhileStmt = 'While' Expression '{' { Statement } '}'
+
+DoWhileStmt = 'Do' '{' { Statement } '}' 'While' Expression ';'
+
+SwitchStmt = 'Switch' Expression '{' { SwitchCase } [ SwitchDefault ] '}'
+
+SwitchCase = 'Case' Expression '{' { Statement } '}'
+
+SwitchDefault = 'Default' '{' { Statement } '}'
+
+ForListStmt = 'For' Symbol 'In' Expression '{' { Statement } '}'
+
+ForLoopStmt = 'For' '(' Symbol '=' Expression ';' Expression ';' Expression ';' ')'
+              '{' { Statement } '}'
+
+Expression = Literal
+           | 'This'
+           | '(' Expression ')'
+           | Expression ( '+' | '-' | '*' | '/' | '%' | '~' ) Expression
+           | Expression ( '==' | '!=' | '<' | '<=' | '>=' | '>' ) Expression
+           | 'Not' Expression
+           | 'New' Expression
+           | Expression ( 'And' | 'Or' ) Expression
+           | SystemCall | ObjectCall | LocalCall
+           | Symbol | LocalSymbol | ObjectSymbol
+
+SystemCall = SystemSymbol '(' [ ExpressionList ] ')'
+
+ObjectCall = Expression '.' Symbol '(' [ ExpressionList ] ')'
+
+LocalCall = LocalSymbol '(' [ ExpressionList ] ')'
+
+ExpressionList = Expression { ',' Expression }
+
+Literal = Integer
+        | Float
+        | String
+        | 'True' | 'False' | 'Nil'
+
+Symbol = [A-Za-z][A-Za-z0-9_]*
+
+SystemSymbol = _Symbol
+
+LocalSymbol = .Symbol
+
+ObjectSymbol = @Symbol
+             | @Symbol::Symbol
