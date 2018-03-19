@@ -128,11 +128,20 @@ void vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...) {
     }
     else if (num_args == 1) {
         val arg0 = va_arg(argp, val);
+        char *arg_text = val_print(arg0);
+        printf("    %s\n", arg_text);
+        free(arg_text);
         eval_exec_method(ex->eval_ctx, ex->start_obj, method, 1, arg0);
     }
     else if (num_args == 2) {
         val arg0 = va_arg(argp, val);
         val arg1 = va_arg(argp, val);
+        char *arg_text = val_print(arg0);
+        printf("    %s\n", arg_text);
+        free(arg_text);
+        arg_text = val_print(arg1);
+        printf("    %s\n", arg_text);
+        free(arg_text);
         eval_exec_method(ex->eval_ctx, ex->start_obj, method, 2, arg0, arg1);
     }
     else {

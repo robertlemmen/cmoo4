@@ -60,6 +60,9 @@ object_id val_get_objref(val v);
 void* val_get_special(val v);
 // XXX more getters
 
+/* return a textual representation, caller needs to free memory */
+char* val_print(val v);
+
 // serialize/deserialize type
 
 #endif /* TYPES_H */

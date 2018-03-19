@@ -3,15 +3,13 @@ C M O O   T O D O
 
 next main jobs
 --------------
-- split stubby core in persist.c into different objects
--> very basic, single-threaded "echo" type server
-
 - temp sleep opcode and concurrent (but non-deadlocking) tests
 - cleanups and valgrind work
 -> multi-threaded "echo" server
 
 after basic case works
 ----------------------
+- start on compiler
 - error handling in eval.c
 - load objects from file
 - deadlock detection and rollbacks

@@ -144,6 +144,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         &&do_setglobal,
         &&do_make_obj,
         &&do_self,
+        &&do_parent,
     };
     #define DISPATCH() goto *dispatch_table[*ip++]
 
@@ -158,6 +159,10 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         }
         do_halt: {
             printf("| HALT                             |\n");
+            while (ctx->sp != ctx->stack) {
+                val_clear(&ctx->sp->val);
+                ctx->sp--;
+            }
             printf("'----------------------------------'\n");
             return;
             DISPATCH();
@@ -174,7 +179,9 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         do_debugr: {
             uint8_t msg_r = *((uint8_t*)ip);
             ip += 1;
-            printf("| DEBUGR r0x%02X 0x%016lX  |\n", msg_r, ctx->fp[msg_r].val);
+            char *val_text = val_print(ctx->fp[msg_r].val);
+            printf("| DEBUGR r0x%02X 0x%016lX %s\n", msg_r, ctx->fp[msg_r].val, val_text);
+            free(val_text);
             if (&ctx->fp[msg_r] > ctx->sp) {
                 // XXX raise
                 printf("!! access to reg outside stack\n");
@@ -207,7 +214,9 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         do_push: {
             uint8_t src = *((uint8_t*)ip);
             ip += 1;
-            printf("| PUSH r0x%02X                       |\n", src);
+            char *val_text = val_print(ctx->fp[src].val);
+            printf("| PUSH r0x%02X %s\n", src, val_text);
+            free(val_text);
             if (&ctx->fp[src] > ctx->sp) {
                 // XXX raise
                 printf("!! access to reg outside stack\n");
@@ -237,7 +246,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             uint8_t nargs = *((uint8_t*)ip);
             ip += 1;
             printf("| CALL %-4i                        |\n", nargs);
-            val method_name = ctx->sp[nargs * -1 -1].val;
+            val method_name = ctx->sp[nargs * -1 - 1].val;
             val obj_ref = ctx->sp[nargs * -1 - 2].val;
             // XXX assertions
             // XXX we need to push obj on the stack as well!!
@@ -250,7 +259,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             }
             val_dec_ref(ctx->sp[nargs * -1 - 2].val);
             ctx->sp[nargs * -1 - 2].se = ctx->fp;
-            val_dec_ref(ctx->sp[nargs * -1 -1].val);
+            val_dec_ref(ctx->sp[nargs * -1 - 1].val);
             ctx->sp[nargs * -1 - 1].code = ip;
             val_dec_ref(ctx->sp[nargs * -1].val);
             ctx->sp[nargs * -1].obj = ctx->obj;
@@ -349,9 +358,12 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             ip += 1;
             uint16_t len = *((uint16_t*)ip);
             ip += 2;
-            printf("| LOAD_STRING r0x%02X <- %2i ???      |\n", reg, len);
+            val s = val_make_string(len, (char*)ip);
+            char *val_text = val_print(s);
+            printf("| LOAD_STRING r0x%02X <- %2i %s\n", reg, len, val_text);
+            free(val_text);
             val_clear(&ctx->fp[reg].val);
-            ctx->fp[reg].val = val_make_string(len, (char*)ip);
+            ctx->fp[reg].val = s;
             ip += len;
             DISPATCH();
         }
@@ -945,6 +957,17 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             // XXX
             DISPATCH();
         }
+        do_parent: {
+            uint8_t dst = *((uint8_t*)ip);
+            ip += 1;
+            printf("| PARENT r0x%02X                     |\n", dst);
+            // XXX check in range
+            val_clear(&ctx->fp[dst].val);
+            if (obj_get_parent_count(ctx->obj) > 0) {
+                ctx->fp[dst].val = val_make_objref(obj_get_parent(ctx->obj, 0));
+            }
+            DISPATCH();
+        }
     }
     // XXX val_clear the whole stack
 }
@@ -972,6 +995,7 @@ void eval_exec_method(struct eval_ctx *ctx, struct object *obj, val method, int 
 }
 
 void eval_push_arg(struct eval_ctx *ctx, val v) {
+    val_inc_ref(v);
     ctx->sp++;
     ctx->sp->val = v;
 }

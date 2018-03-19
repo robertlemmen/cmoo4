@@ -31,10 +31,10 @@ int main(int argc, char **argv) {
 
     sleep(10);
 
-    net_stop(net);
     tasks_stop(tasks);
     tasks_free_ctx(tasks);
     ntx_free_ctx(ntx);
+    net_stop(net);
     net_free_ctx(net);
     vm_free(vm);
     store_free(store);

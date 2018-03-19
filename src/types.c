@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 
 /* XXX in the longer run we should change the type tagging scheme so that
  * the lowest bits only indicate whether this is a non-immediate, and if 
@@ -134,4 +135,36 @@ object_id val_get_objref(val v) {
 
 void* val_get_special(val v) {
     return (void*)((uint64_t)v & (~0x07));
+}
+
+char* val_print(val v) {
+    char *buf = malloc(128);
+    switch (val_type(v)) {
+        case TYPE_NIL:
+            snprintf(buf, 128, "NIL");
+            break;
+        case TYPE_BOOL:
+            snprintf(buf, 128, val_get_bool(v) ? "#t" : "#f");
+            break;
+        case TYPE_INT:
+            snprintf(buf, 128, "%i", val_get_int(v));
+            break;
+        case TYPE_FLOAT:
+            snprintf(buf, 128, "%f", val_get_float(v));
+            break;
+        case TYPE_STRING:
+            // XXX overflows anyone?
+            snprintf(buf, 128, "'%s'", val_get_string_data(v));
+            break;
+        case TYPE_OBJREF:
+            snprintf(buf, 128, "OBJ:%li", val_get_objref(v));
+            break;
+        case TYPE_SPECIAL:
+            snprintf(buf, 128, "SPECIAL");
+            break;
+        default:
+            snprintf(buf, 128, "??");
+            break;
+    }
+    return buf;
 }
