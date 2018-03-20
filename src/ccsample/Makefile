@@ -1,0 +1,41 @@
+WARN=-Wall -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wno-unused-function
+# XXX _GNU_SOURCE is for recursive pthread locks, which we may not need for too long
+CFLAGS=-g $(WARN) -std=c11 -pthread -D_GNU_SOURCE
+CINCFLAGS=
+LDFLAGS=
+CC=gcc
+TARGET=cmc
+SUBDIRS=test
+
+SOURCES=$(shell ls *.c)
+OBJECTS=$(subst .c,.o,$(SOURCES))
+
+$(TARGET): cc_lex.o cc_par.o $(OBJECTS)
+	@echo "Linking $@..."
+	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+main.o: cc_par.h cc_lex.h
+cc_lex.o: cc_par.h
+cc_par.o: cc_lex.h
+
+%.o: %.c
+	@echo "Compiling $<..."
+	@$(CC) $(CFLAGS) $(CINCFLAGS) -c $<
+	@$(CC) -MM $(CFLAGS) $(CINCFLAGS) -c $< > $*.d
+
+
+cc_par.h: cc_par.c
+cc_par.c:	cc.y
+	@echo "Generating $@..."
+	@bison --defines=cc_par.h -o$@ $<
+
+cc_lex.h: cc_lex.c
+cc_lex.c: cc.l 
+	@echo "Generating $@..."
+	@flex -o$@ $<
+
+clean:
+	@echo "Cleaning..."
+	@rm -f $(TARGET)
+	@rm -f *.o *.d
+	@rm -f cc_par.c cc_par.h cc_lex.h cc_lex.c

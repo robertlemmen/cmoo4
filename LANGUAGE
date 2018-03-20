@@ -56,20 +56,19 @@ IfStmt = 'If' Expression '{' { Statement } '}'
          { 'Else' 'If' Expression '{' { Statement } '}' }
          [ 'Else' '{' { Statement } '}'
 
-WhileStmt = 'While' Expression '{' { Statement } '}'
+WhileStmt = 'While' Expression Block
 
-DoWhileStmt = 'Do' '{' { Statement } '}' 'While' Expression ';'
+DoWhileStmt = 'Do' Block 'While' Expression ';'
 
 SwitchStmt = 'Switch' Expression '{' { SwitchCase } [ SwitchDefault ] '}'
 
-SwitchCase = 'Case' Expression '{' { Statement } '}'
+SwitchCase = 'Case' Expression Block
 
-SwitchDefault = 'Default' '{' { Statement } '}'
+SwitchDefault = 'Default' Block
 
-ForListStmt = 'For' Symbol 'In' Expression '{' { Statement } '}'
+ForListStmt = 'For' Symbol 'In' Expression Block
 
-ForLoopStmt = 'For' '(' Symbol '=' Expression ';' Expression ';' Expression ';' ')'
-              '{' { Statement } '}'
+ForLoopStmt = 'For' '(' Symbol '=' Expression ';' Expression ';' Expression ')' Block
 
 Expression = Literal
            | 'This'
@@ -102,4 +101,3 @@ SystemSymbol = _Symbol
 LocalSymbol = .Symbol
 
 ObjectSymbol = @Symbol
-             | @Symbol::Symbol

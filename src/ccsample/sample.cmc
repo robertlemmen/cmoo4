@@ -1,0 +1,9 @@
+CompUnit Test;
+
+Exported Object Root  {
+
+    Global listeners = Nil;
+
+    Slot init(test, ofenrohr) {
+    }
+}
