@@ -1,4 +1,4 @@
-%{
+%code top {
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,7 +7,11 @@
 
 void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg);
 
-%}
+}
+
+%code requires {
+#include "cc_ast.h"
+}
 
 %define api.pure full
 %define parse.error verbose
@@ -19,6 +23,7 @@ void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg);
 	int ival;
 	float fval;
     char *sval;
+    ast_node *node;
 }
 
 %token CompUnit
@@ -75,27 +80,49 @@ void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg);
 %right New
 %left '.'
 
+%type <node> ObjectDefList
+%type <node> GlobalDefList
+%type <node> SlotDefList
+%type <node> ObjectDef
+%type <node> GlobalDef
+%type <node> SlotDef
+
 %%
 
 File: CompUnitLine ObjectDefList
 
 CompUnitLine: CompUnit SYMBOL ';'
 
-ObjectDefList: %empty
-    | ObjectDefList ObjectDef
+ObjectDefList: %empty {
+        $$ = NULL;
+    }
+    | ObjectDefList ObjectDef {
+        $$ = list_entry_create(yyget_extra(scanner), $1, $2);
+    }
 
-ObjectDef: ExportStatement Object SYMBOL '{' GlobalDefList SlotDefList '}'
+ObjectDef: ExportStatement Object SYMBOL '{' GlobalDefList SlotDefList '}' {
+        // XXX create object
+        $$ = NULL;
+    }
 
-ExportStatement: %empty
+ExportStatement: %empty 
     | Exported
 
-GlobalDefList: %empty
-    | GlobalDef
+GlobalDefList: %empty {
+        $$ = NULL;
+    }
+    | GlobalDefList GlobalDef {
+        $$ = list_entry_create(yyget_extra(scanner), $1, $2);
+    }
 
 GlobalDef: Global SYMBOL '=' Expression ';'
 
-SlotDefList: %empty
-    | SlotDef
+SlotDefList: %empty {
+        $$ = NULL;
+    }
+    | SlotDefList SlotDef {
+        $$ = list_entry_create(yyget_extra(scanner), $1, $2);
+    }
 
 SlotDef: Slot SYMBOL '(' OptArgList ')' '{' OptStatementList '}'
 

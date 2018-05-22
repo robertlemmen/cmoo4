@@ -1,0 +1,80 @@
+%option reentrant
+
+%decls %{
+
+typedef union
+{
+	int		int_value;
+	float	float_value;
+
+} eval_value;
+
+%}
+
+%{
+#include "cc_ast.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+
+%}
+
+%node ast_node %abstract %typedef = {
+}
+
+
+%node list_entry ast_node = {
+    ast_node *entry;
+    ast_node *next;
+}
+
+%node expression ast_node %abstract %typedef = {
+}
+
+%node binary expression %abstract = {
+    expression *expr1;
+    expression *expr2;
+}
+
+%node intnum expression = {
+    int num;
+}
+
+%node floatnum expression = {
+    float num;
+}
+
+%node plus binary
+%node minus binary
+%node multiply binary
+%node divide binary
+
+%operation void traverse(expression *e)
+
+traverse(binary) {
+    traverse(e->expr1);
+    traverse(e->expr2);
+}
+
+traverse(intnum) {
+}
+
+traverse(floatnum) {
+}
+
+%end %{
+
+char *yycurrfilename(YYNODESTATE *state) {
+    return "";
+}
+
+long yycurrlinenum(YYNODESTATE *state) {
+    return 0;
+}
+
+void yynodefailed(YYNODESTATE *state) {
+	fprintf(stderr, "virtual memory exhausted\n");
+	exit(1);
+}
+
+%}

@@ -8,6 +8,7 @@
 %}
 
 %option 8bit reentrant bison-bridge
+%option extra-type="YYNODESTATE *"
 %option warn noyywrap nodefault
 %option header-file="cc_lex.h"
 %option bison-locations

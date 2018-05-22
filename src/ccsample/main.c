@@ -3,6 +3,7 @@
 
 #include "cc_par.h"
 #include "cc_lex.h"
+#include "cc_ast.h"
 
 size_t readfile(FILE *in, char **buffer) {
     size_t size = 0;
@@ -27,8 +28,12 @@ int main(void) {
     char *buffer = NULL;
     readfile(stdin, &buffer);
 
+    YYNODESTATE ast_state;
+    yynodeinit(&ast_state);
+
     yyscan_t scanner;
     yylex_init(&scanner);
+    yylex_init_extra(&ast_state, &scanner);
     yy_scan_string(buffer, scanner);
     yyparse(scanner);
     yylex_destroy(scanner);
