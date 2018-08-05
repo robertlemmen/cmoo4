@@ -23,6 +23,7 @@ void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg);
 	int ival;
 	float fval;
     char *sval;
+    bool bval;
     ast_node *node;
 }
 
@@ -61,7 +62,7 @@ void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg);
 %token LOCAL_SYMBOL
 %token OBJECT_SYMBOL
 %token SYSTEM_SYMBOL
-%token SYMBOL
+%token <sval> SYMBOL
 
 %token INTEGER
 %token FLOAT
@@ -80,57 +81,105 @@ void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg);
 %right New
 %left '.'
 
+%type <sval> CompUnitLine
 %type <node> ObjectDefList
 %type <node> GlobalDefList
 %type <node> SlotDefList
 %type <node> ObjectDef
 %type <node> GlobalDef
 %type <node> SlotDef
+%type <node> Block
+%type <node> OptStatementList
+%type <node> StatementList
+%type <node> Statement
+%type <node> VarDeclaration
+%type <node> Assignment
+%type <node> ReturnStmt
+%type <node> IfStmt
+%type <node> WhileStmt
+%type <node> Expression
+%type <node> DoStmt
+%type <node> SwitchStmt
+%type <node> ForListStmt
+%type <node> ForLoopStmt
+%type <bval> ExportStatement
+%type <node> OptArgList
+%type <node> ArgList
 
 %%
 
-File: CompUnitLine ObjectDefList
+/* XXX should assert all nodes are actually the expected type */
 
-CompUnitLine: CompUnit SYMBOL ';'
+File: CompUnitLine ObjectDefList {
+    printf("parsed file ok, compunit is '%s'\n", $1);
+    printf("contained objects:\n");
+    list_entry *cle = (list_entry*)$2;
+    dump((ast_node*)cle, 0);
+}
+
+CompUnitLine: CompUnit SYMBOL ';' {
+    $$ = $2;
+}
 
 ObjectDefList: %empty {
         $$ = NULL;
     }
     | ObjectDefList ObjectDef {
-        $$ = list_entry_create(yyget_extra(scanner), $1, $2);
+        $$ = list_entry_create(yyget_extra(scanner), $2, (list_entry*)$1);
     }
 
 ObjectDef: ExportStatement Object SYMBOL '{' GlobalDefList SlotDefList '}' {
-        // XXX create object
-        $$ = NULL;
+        $$ = object_def_create(yyget_extra(scanner), $3, $1, (list_entry*)$5,
+                                            (list_entry*)$6);
     }
 
-ExportStatement: %empty 
-    | Exported
+ExportStatement: %empty {
+        $$ = false;
+    }
+    | Exported {
+        $$ = true;
+    }
 
 GlobalDefList: %empty {
         $$ = NULL;
     }
     | GlobalDefList GlobalDef {
-        $$ = list_entry_create(yyget_extra(scanner), $1, $2);
+        $$ = list_entry_create(yyget_extra(scanner), $2, (list_entry*)$1);
     }
 
-GlobalDef: Global SYMBOL '=' Expression ';'
+/* XXX perhaps this should only take literal expressions */
+GlobalDef: Global SYMBOL '=' Expression ';' {
+        $$ = global_create(yyget_extra(scanner), $2, NULL);
+    }
 
 SlotDefList: %empty {
         $$ = NULL;
     }
     | SlotDefList SlotDef {
-        $$ = list_entry_create(yyget_extra(scanner), $1, $2);
+        $$ = list_entry_create(yyget_extra(scanner), $2, (list_entry*)$1);
     }
 
-SlotDef: Slot SYMBOL '(' OptArgList ')' '{' OptStatementList '}'
+SlotDef: Slot SYMBOL '(' OptArgList ')' Block {
+        $$ = slot_create(yyget_extra(scanner), $2, (list_entry*)$4, (block*)$6);
+    }
 
-OptArgList: %empty
-    | ArgList
+// XXX why do have optarglist and not just make the arglist start empty like the
+// lists above?
+OptArgList: %empty {
+        $$ = NULL;
+    }
+    | ArgList {
+        $$ = $1;
+    }
 
-ArgList: SYMBOL
-    | ArgList ',' SYMBOL
+ArgList: SYMBOL {
+        $$ = list_entry_create(yyget_extra(scanner),
+                argument_create(yyget_extra(scanner), $1), NULL);
+    }
+    | ArgList ',' SYMBOL {
+        $$ = list_entry_create(yyget_extra(scanner), 
+                argument_create(yyget_extra(scanner), $3), (list_entry*)$1);
+    }
 
 Expression: Literal
     | This
@@ -183,31 +232,70 @@ Literal: INTEGER
     | False
     | Nil
 
-OptStatementList: %empty
-    | StatementList
+OptStatementList: %empty {
+        $$ = NULL;
+    }
+    | StatementList {
+        $$ = $1;
+    }
 
-StatementList: Statement
-    | StatementList Statement
+StatementList: Statement {
+        $$ = list_entry_create(yyget_extra(scanner),
+                $1, NULL);
+    }
+    | StatementList Statement {
+        $$ = list_entry_create(yyget_extra(scanner),
+                $2, (list_entry*)$1);
+    }
 
 
-Statement: VarDeclaration
-    | Assignment
-    | Block
-    | ReturnStmt
-    | IfStmt
-    | WhileStmt
-    | DoStmt
-    | SwitchStmt
-    | ForListStmt
-    | ForLoopStmt
+Statement: VarDeclaration {
+        $$ = $1;
+    }
+    | Assignment {
+        $$ = $1;
+    }
+    | Block {
+        $$ = $1;
+    }
+    | ReturnStmt {
+        $$ = $1;
+    }
+    | IfStmt {
+        $$ = $1;
+    }
+    | WhileStmt {
+        $$ = $1;
+    }
+    | DoStmt {
+        $$ = $1;
+    }
+    | SwitchStmt {
+        $$ = $1;
+    }
+    | ForListStmt {
+        $$ = $1;
+    }
+    | ForLoopStmt {
+        $$ = $1;
+    }
 
-VarDeclaration: Var SYMBOL ';'
-    | Var SYMBOL '=' Expression ';'
+
+VarDeclaration: Var SYMBOL ';' {
+        $$ = (ast_node*)var_decl_create(yyget_extra(scanner),
+            $2, NULL);
+    }
+    | Var SYMBOL '=' Expression ';' {
+        $$ = (ast_node*)var_decl_create(yyget_extra(scanner),
+            $2, (expression*)$4);
+    }
 
 Assignment: SYMBOL '=' Expression ';'
     | LOCAL_SYMBOL '=' Expression ';'
 
-Block: '{' OptStatementList '}'
+Block: '{' OptStatementList '}' {
+        $$ = (ast_node*)block_create(yyget_extra(scanner), (list_entry*)$2);
+    }
 
 ReturnStmt: Return Expression ';'
 

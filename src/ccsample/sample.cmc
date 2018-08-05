@@ -5,5 +5,9 @@ Exported Object Root  {
     Global listeners = Nil;
 
     Slot init(test, ofenrohr) {
+        Var x;
+    }
+   
+    Slot endit(arg1, arg2, arg3) {
     }
 }

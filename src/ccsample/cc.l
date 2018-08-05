@@ -51,7 +51,9 @@
 _[A-Za-z][A-Za-z0-9_]*  { return SYSTEM_SYMBOL; }
 \.[A-Za-z][A-Za-z0-9_]* { return LOCAL_SYMBOL; }
 @[A-Za-z][A-Za-z0-9_]*  { return OBJECT_SYMBOL; }
-[A-Za-z][A-Za-z0-9_]*   { return SYMBOL; }
+[A-Za-z][A-Za-z0-9_]*   { yylval->sval = malloc(strlen(yytext)+1); 
+						  strcpy(yylval->sval, yytext);
+						  return SYMBOL; }
 
 [0-9]+                  { /* XXX value */ return INTEGER; }
 [0-9]*\.[0-9]+          { /* XXX value */ return FLOAT; }

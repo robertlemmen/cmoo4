@@ -2,6 +2,8 @@
 
 %decls %{
 
+#include <stdbool.h>
+
 typedef union
 {
 	int		int_value;
@@ -22,44 +24,108 @@ typedef union
 %node ast_node %abstract %typedef = {
 }
 
-
+// XXX many of these do not need to be ast_nodes, only really statements and further in...
 %node list_entry ast_node = {
     ast_node *entry;
-    ast_node *next;
+    list_entry *prev;
+}
+
+%node object_def ast_node = {
+	char *name;
+	bool exported;
+	list_entry *globals;
+	list_entry *slots;
+}
+
+%node global ast_node = {
+	char *name;
+	ast_node *expr;
+}
+
+%node slot ast_node = {
+	char *name;
+	list_entry *arguments;
+    block *body;
+}
+
+%node argument ast_node = {
+	char *name;
+}
+
+%node statement ast_node %abstract %typedef = {
+}
+
+%node block statement = {
+    list_entry *statements;
+}
+
+%node var_decl statement = {
+    char *name;
+    expression *init_expr;
 }
 
 %node expression ast_node %abstract %typedef = {
 }
 
-%node binary expression %abstract = {
-    expression *expr1;
-    expression *expr2;
+%operation void dump(ast_node *n, int d)
+
+dump(list_entry) {
+    if (n->prev) {
+        dump((ast_node*)n->prev, d);
+    }
+    dump(n->entry, d);
 }
 
-%node intnum expression = {
-    int num;
+dump(object_def) {
+    char *indent = alloca(d*2+1);
+    memset(indent, ' ', d*2);
+    indent[d*2] = '\0';
+    printf("# %s%sObject %s {\n", 
+        indent,
+        n->exported ? "Exported " : "",
+        n->name);
+    dump((ast_node*)n->globals, d+1);
+    dump((ast_node*)n->slots, d+1);
+    printf("# %s}", indent);
 }
 
-%node floatnum expression = {
-    float num;
+dump(global) {
+    char *indent = alloca(d*2+1);
+    memset(indent, ' ', d*2);
+    indent[d*2] = '\0';
+    printf("# %sGlobal %s = ;\n", 
+        indent, 
+        n->name);
 }
 
-%node plus binary
-%node minus binary
-%node multiply binary
-%node divide binary
-
-%operation void traverse(expression *e)
-
-traverse(binary) {
-    traverse(e->expr1);
-    traverse(e->expr2);
+dump(slot) {
+    char *indent = alloca(d*2+1);
+    memset(indent, ' ', d*2);
+    indent[d*2] = '\0';
+    printf("# %sSlot %s() ", indent, n->name);
+    dump((ast_node*)n->body, d);
 }
 
-traverse(intnum) {
+dump(argument) {
+    // XXX
 }
 
-traverse(floatnum) {
+dump(block) {
+    char *indent = alloca(d*2+1);
+    memset(indent, ' ', d*2);
+    indent[d*2] = '\0';
+    printf("{\n");
+    if (n->statements) {
+        dump(n->statements, d+1);
+    }
+    printf("# %s}\n", indent);
+}
+
+dump(var_decl) {
+    char *indent = alloca(d*2+1);
+    memset(indent, ' ', d*2);
+    indent[d*2] = '\0';
+    printf("# %sVar %s = ;\n", indent, n->name);
 }
 
 %end %{
@@ -76,5 +142,5 @@ void yynodefailed(YYNODESTATE *state) {
 	fprintf(stderr, "virtual memory exhausted\n");
 	exit(1);
 }
-
+ 
 %}
