@@ -34,8 +34,8 @@
 "<"                     { return LT; }
 ">="                    { return GE; }
 ">"                     { return GT; }
-"True"                  { return True; }
-"False"                 { return False; }
+"True"                  { yylval->bval = true; return BOOL; }
+"False"                 { yylval->bval = false; return BOOL; }
 "Nil"                   { return Nil; }
 "Return"                { return Return; }
 "While"                 { return While; }
@@ -55,9 +55,17 @@ _[A-Za-z][A-Za-z0-9_]*  { return SYSTEM_SYMBOL; }
 						  strcpy(yylval->sval, yytext);
 						  return SYMBOL; }
 
-[0-9]+                  { /* XXX value */ return INTEGER; }
-[0-9]*\.[0-9]+          { /* XXX value */ return FLOAT; }
-\"[^\"]\"               { /* XXX value */ return STRING; }
+[0-9]+                  { char *yytext_end = yytext + strlen(yytext);
+						  yylval->ival = strtol(yytext, &yytext_end, 10);
+					      return INTEGER; }
+[0-9]*\.[0-9]+          { char *yytext_end = yytext + strlen(yytext); 
+						  yylval->fval = strtod(yytext, &yytext_end);
+					      return FLOAT; }
+
+\"(\\.|[^\\"])*\"       { yylval->sval = malloc(strlen(yytext));
+						  strcpy(yylval->sval, yytext+1);
+						  yylval->sval[strlen(yytext)-2] = '\0';
+						  return STRING; }
 
 .                       { return yytext[0]; }
 

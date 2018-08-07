@@ -27,7 +27,7 @@ CompUnit = 'CompUnit' Symbol ';' { ObjectDefinition }
 
 ObjectDefinition = [ 'Exported' ] 'Object' ObjectSymbol '{' { Global } { Slot } '}'
 
-Global = 'Global' Symbol = Literal ';'
+Global = 'Global' Symbol [ '=' Literal ] ';'
 
 Slot = 'Slot' Symbol '(' [ ArgList ] ')' '{' { Statement } '}'
 

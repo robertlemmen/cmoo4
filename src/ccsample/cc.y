@@ -64,9 +64,10 @@ void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg);
 %token SYSTEM_SYMBOL
 %token <sval> SYMBOL
 
-%token INTEGER
-%token FLOAT
-%token STRING
+%token <ival> INTEGER
+%token <fval> FLOAT
+%token <sval> STRING
+%token <bval> BOOL
 
 %start File
 
@@ -77,8 +78,8 @@ void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg);
 %left '~'
 %left '+' '-' 
 %left '*' '/' '%'
-%right Not
-%right New
+%left Not
+%left New
 %left '.'
 
 %type <sval> CompUnitLine
@@ -98,6 +99,13 @@ void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg);
 %type <node> IfStmt
 %type <node> WhileStmt
 %type <node> Expression
+%type <node> BinaryMathExpression
+%type <node> ComparisonExpression
+%type <node> LogicalExpression
+%type <node> SystemCall
+%type <node> ObjectCall
+%type <node> LocalCall
+%type <node> Literal
 %type <node> DoStmt
 %type <node> SwitchStmt
 %type <node> ForListStmt
@@ -108,13 +116,11 @@ void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg);
 
 %%
 
-/* XXX should assert all nodes are actually the expected type */
-
 File: CompUnitLine ObjectDefList {
     printf("parsed file ok, compunit is '%s'\n", $1);
     printf("contained objects:\n");
     list_entry *cle = (list_entry*)$2;
-    dump((ast_node*)cle, 0);
+    dump((ast_node*)cle, 0, false);
 }
 
 CompUnitLine: CompUnit SYMBOL ';' {
@@ -147,8 +153,11 @@ GlobalDefList: %empty {
         $$ = list_entry_create(yyget_extra(scanner), $2, (list_entry*)$1);
     }
 
-/* XXX perhaps this should only take literal expressions */
-GlobalDef: Global SYMBOL '=' Expression ';' {
+GlobalDef: Global SYMBOL ';' {
+        $$ = global_create(yyget_extra(scanner), $2, 
+			(ast_node*)literal_create(yyget_extra(scanner), val_make_nil()));
+    }
+	| Global SYMBOL '=' Literal ';' {
         $$ = global_create(yyget_extra(scanner), $2, NULL);
     }
 
@@ -181,17 +190,35 @@ ArgList: SYMBOL {
                 argument_create(yyget_extra(scanner), $3), (list_entry*)$1);
     }
 
-Expression: Literal
-    | This
-    | '(' Expression ')'
-    | BinaryMathExpression
-    | ComparisonExpression
+Expression: Literal {
+		$$ = $1;
+	}
+    | This {
+		$$ = (ast_node*)this_expr_create(yyget_extra(scanner));
+	}
+    | '(' Expression ')' {
+		$$ = $2;
+	}
+    | BinaryMathExpression {
+        $$ = $1;
+    }
+    | ComparisonExpression {
+        $$ = $1;
+    }
     | Not Expression
     | New Expression
-    | LogicalExpression 
-    | SystemCall 
-    | ObjectCall
-    | LocalCall 
+    | LogicalExpression  {
+        $$ = $1;
+    }
+    | SystemCall  {
+        $$ = $1;
+    }
+    | ObjectCall {
+        $$ = $1;
+    }
+    | LocalCall  {
+        $$ = $1;
+    }
     | SYMBOL
     | LOCAL_SYMBOL
     | OBJECT_SYMBOL
@@ -222,15 +249,28 @@ ComparisonExpression: Expression EQ Expression
     | Expression GE Expression
     | Expression GT Expression
 
-LogicalExpression: Expression And Expression
-    | Expression Or Expression
+LogicalExpression: Expression And Expression {
+        $$ = (ast_node*)binary_expr_create(yyget_extra(scanner), $1, $3, OP_AND);
+    }
+    | Expression Or Expression {
+        $$ = (ast_node*)binary_expr_create(yyget_extra(scanner), $1, $3, OP_OR);
+    }
 
-Literal: INTEGER
-    | FLOAT
-    | STRING
-    | True 
-    | False
-    | Nil
+Literal: INTEGER {
+		$$ = (ast_node*)literal_create(yyget_extra(scanner), val_make_int($1));
+	}
+    | FLOAT {
+		$$ = (ast_node*)literal_create(yyget_extra(scanner), val_make_float($1));
+	}
+    | STRING {
+		$$ = (ast_node*)literal_create(yyget_extra(scanner), val_make_string(strlen($1), $1));
+	}
+    | BOOL {
+		$$ = (ast_node*)literal_create(yyget_extra(scanner), val_make_bool($1));
+	}
+    | Nil {
+		$$ = (ast_node*)literal_create(yyget_extra(scanner), val_make_nil());
+	}
 
 OptStatementList: %empty {
         $$ = NULL;
@@ -247,7 +287,6 @@ StatementList: Statement {
         $$ = list_entry_create(yyget_extra(scanner),
                 $2, (list_entry*)$1);
     }
-
 
 Statement: VarDeclaration {
         $$ = $1;
@@ -280,10 +319,9 @@ Statement: VarDeclaration {
         $$ = $1;
     }
 
-
 VarDeclaration: Var SYMBOL ';' {
-        $$ = (ast_node*)var_decl_create(yyget_extra(scanner),
-            $2, NULL);
+        $$ = (ast_node*)var_decl_create(yyget_extra(scanner), $2,
+			(expression*)literal_create(yyget_extra(scanner), val_make_nil()));
     }
     | Var SYMBOL '=' Expression ';' {
         $$ = (ast_node*)var_decl_create(yyget_extra(scanner),
@@ -297,7 +335,9 @@ Block: '{' OptStatementList '}' {
         $$ = (ast_node*)block_create(yyget_extra(scanner), (list_entry*)$2);
     }
 
-ReturnStmt: Return Expression ';'
+ReturnStmt: Return Expression ';' {
+        $$ = (ast_node*)return_stmt_create(yyget_extra(scanner), (expression*)$2);
+    }
 
 WhileStmt: While Expression Block
 

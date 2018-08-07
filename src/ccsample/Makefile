@@ -1,8 +1,8 @@
 WARN=-Wall -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wno-unused-function
 # XXX _GNU_SOURCE is for recursive pthread locks, which we may not need for too long
-CFLAGS=-g $(WARN) -std=c11 -pthread -D_GNU_SOURCE
+CFLAGS=-g $(WARN) -std=c11 -pthread -D_GNU_SOURCE -I..
 CINCFLAGS=
-LDFLAGS=
+LDFLAGS=../types.o
 CC=gcc
 FLEX=flex
 BISON=bison
@@ -20,6 +20,7 @@ $(TARGET): cc_lex.o cc_par.o cc_ast.o $(OBJECTS)
 main.o: cc_par.h cc_lex.h
 cc_lex.o: cc_par.h
 cc_par.o: cc_lex.h
+cc_ast.o: cc_ast.c
 
 %.o: %.c
 	@echo "Compiling $<..."
@@ -28,7 +29,7 @@ cc_par.o: cc_lex.h
 
 
 cc_par.h: cc_par.c
-cc_par.c:	cc.y
+cc_par.c: cc.y
 	@echo "Generating $@..."
 	@$(BISON) --defines=cc_par.h -o$@ $<
 

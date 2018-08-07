@@ -2,10 +2,11 @@ CompUnit Test;
 
 Exported Object Root  {
 
-    Global listeners = Nil;
+    Global listeners;
 
     Slot init(test, ofenrohr) {
-        Var x;
+        Var x = "ofenrohr";
+        Return False Or True;
     }
    
     Slot endit(arg1, arg2, arg3) {
