@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <unistd.h>
 // XXX
 #include <stdio.h>
 
@@ -145,6 +146,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
         &&do_make_obj,
         &&do_self,
         &&do_parent,
+        &&do_usleep,
     };
     #define DISPATCH() goto *dispatch_table[*ip++]
 
@@ -279,10 +281,14 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             ctx->fp = old_fp[-3].se;
             old_fp[-3].val = ret;
             val_inc_ref(ret);
-            while (ctx->sp > &old_fp[-3]) {
+            while (ctx->sp > &old_fp[-2]) {
                 val_clear(&ctx->sp->val);
                 ctx->sp--;
             }
+            // this one is outside the loop because it's not actually a val,
+            // it's the old frame pointer! and val_clear()ing that is quite
+            // unsafe...
+            old_fp[-2].val = TYPE_NIL;
             DISPATCH();
         }
         do_args_locals: {
@@ -966,6 +972,13 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             if (obj_get_parent_count(ctx->obj) > 0) {
                 ctx->fp[dst].val = val_make_objref(obj_get_parent(ctx->obj, 0));
             }
+            DISPATCH();
+        }
+        do_usleep: {
+            int32_t interval_us = *((int32_t*)ip);
+            ip += 4;
+            printf("| USLEEP %010i                |\n", interval_us);
+            usleep(interval_us);
             DISPATCH();
         }
     }

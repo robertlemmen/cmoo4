@@ -143,6 +143,9 @@
 // XXX this is a stopgap, we could have multiple parents. but until we have
 // lists...
 #define OP_PARENT           40 // reg8:id <= ID of first parent or NIL if no parent
+// XXX this is a temporary/debug aid to expose concurrency issues, this opcode
+// should not be used in actual code
+#define OP_USLEEP           41 // int32:microseconds to sleep
 
 // XXX more ops
 
