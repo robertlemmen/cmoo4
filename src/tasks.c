@@ -11,7 +11,7 @@
 // -------- internal structures --------
 
 // XXX set to 1 for now, needs to be configurable later
-#define THREAD_COUNT            1
+#define THREAD_COUNT            2
 
 #define QUEUE_TYPE_STOP         0
 #define QUEUE_TYPE_INIT         1
@@ -205,6 +205,7 @@ void* tasks_thread_func(void *arg) {
         struct ntx_tx *net_tx = ntx_new_tx(ctx->ntx);
 
         // second step of processing the item, without global lock
+        printf("### tasks processing an item on thread 0x%016lX\n", pthread_self());
         val slot;
         switch (current_item->type) {
             case QUEUE_TYPE_INIT:
@@ -254,6 +255,7 @@ void* tasks_thread_func(void *arg) {
             default:
                 printf("sdfdsffsd\n");
         }
+        printf("## done processing an item on thread 0x%016lX\n", pthread_self());
 
         // commit network transaction
         ntx_commit_tx(net_tx);

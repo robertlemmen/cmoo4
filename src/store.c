@@ -65,6 +65,7 @@ void store_finish_tx(struct store_tx *tx) {
     while (tx->locked) {
         struct lobject_list_node *temp = tx->locked;
         tx->locked = temp->next;
+        printf("### unlocking %i\n", obj_get_id(lobject_get_object(temp->lo)));
         lock_unlock(lobject_get_lock(temp->lo));
         cache_release_object(s->cache, temp->lo);
         free(temp);
@@ -91,9 +92,10 @@ struct object* store_get_object(struct store_tx *tx, object_id oid) {
         cache_put_object(s->cache, lo);
     }
 
-    lock_lock(lobject_get_lock(lo));
-
     pthread_mutex_unlock(&s->cache_latch);
+
+    printf("### locking %i\n", obj_get_id(lobject_get_object(lo)));
+    lock_lock(lobject_get_lock(lo));
 
     // put in tx to release later
     struct lobject_list_node *list_node = malloc(sizeof(struct lobject_list_node));
@@ -116,6 +118,7 @@ struct object* store_make_object(struct store_tx *tx, object_id parent_id) {
     lobject_set_object(lo, obj);
     lobject_set_lock(lo, l);
     cache_put_object(s->cache, lo);
+    printf("### locking %i\n", obj_get_id(lobject_get_object(lo)));
     lock_lock(lobject_get_lock(lo));
     pthread_mutex_unlock(&s->cache_latch);
     printf("##   -> %li\n", obj_get_id(obj));
