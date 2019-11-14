@@ -1,0 +1,47 @@
+CompUnit Echo;
+
+Object Root {
+    Global baseListener = @BaseListener;
+    Global baseSocketHandler = @BaseSocketHandler;
+
+    Slot init(unusedStuff) {
+        Var listener = New .baseListener;
+        listener.setBaseSocketHandler(.baseSocketHandler);
+        _net_make_listener(12345, listener);
+    }
+    
+    Slot shutdown() {
+        _net_shutdown_listener(12345);
+    }
+}
+
+Object BaseListener {
+    Global baseSocketHandler;
+
+    Slot accept(socket) {
+        Var handler = New .baseSocketHandler;
+        handler.setSocket(socket);
+        _net_accept_socket(socket, handler);
+    }
+
+    Slot setBaseSocketHandler(handler) {
+        .baseSocketHandler = handler;
+    }
+}
+
+Object BaseSocketHandler {
+    Global socket;
+
+    Slot setSocket(socket) {
+        .socket = socket;
+    }
+
+    Slot closed(socket) {
+        _net_socket_free(.socket);
+    }
+
+    Slot read(tx, text) {
+        Var response = "> " ~ text;
+        _net_socket_write(.socket, tx, response);
+    }    
+}

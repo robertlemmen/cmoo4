@@ -6,7 +6,9 @@ Exported Object Root  {
 
     Slot init(test, ofenrohr) {
         Var x = "ofenrohr";
-        Return False Or True;
+        Var y = @zoom;
+        x = y.test(123);
+        Return Not False Or True;
     }
    
     Slot endit(arg1, arg2, arg3) {
