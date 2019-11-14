@@ -25,7 +25,7 @@
 "Slot"                  { return Slot; }
 "This"                  { return This; }
 "Not"                   { return Not; }
-"New"                   { return New; }
+"Clone"                 { return Clone; }
 "And"                   { return And; }
 "Or"                    { return Or; }
 "=="                    { return EQ; }

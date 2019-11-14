@@ -4,8 +4,9 @@ Object Root {
     Global baseListener = @BaseListener;
     Global baseSocketHandler = @BaseSocketHandler;
 
+    
     Slot init(unusedStuff) {
-        Var listener = New .baseListener;
+        Var listener = Clone .baseListener;
         listener.setBaseSocketHandler(.baseSocketHandler);
         _net_make_listener(12345, listener);
     }
@@ -19,7 +20,7 @@ Object BaseListener {
     Global baseSocketHandler;
 
     Slot accept(socket) {
-        Var handler = New .baseSocketHandler;
+        Var handler = Clone .baseSocketHandler;
         handler.setSocket(socket);
         _net_accept_socket(socket, handler);
     }

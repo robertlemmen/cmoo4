@@ -117,7 +117,7 @@ typedef union
     int op;
 }
 
-%node new_expr expression = {
+%node clone_expr expression = {
     expression *proto_expr;
 }
 
@@ -253,8 +253,8 @@ dump(this_expr) {
     printf("This");
 }
 
-dump(new_expr) {
-    printf("New ");
+dump(clone_expr) {
+    printf("Clone ");
     dump((ast_node*)n->proto_expr, d, false, false);
 }
 

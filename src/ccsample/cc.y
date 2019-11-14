@@ -34,7 +34,7 @@ void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg);
 %token Slot
 %token This
 %token Not
-%token New
+%token Clone
 %token And
 %token Or
 %token True
@@ -79,7 +79,7 @@ void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg);
 %left '+' '-' 
 %left '*' '/' '%'
 %left Not
-%left New
+%left Clone
 %left '.'
 
 %type <sval> CompUnitLine
@@ -210,8 +210,8 @@ Expression: Literal {
     | Not Expression {
 		$$ = (ast_node*)not_expr_create(yyget_extra(scanner), (expression*)$2);
     }
-    | New Expression {
-		$$ = (ast_node*)new_expr_create(yyget_extra(scanner), (expression*)$2);
+    | Clone Expression {
+		$$ = (ast_node*)clone_expr_create(yyget_extra(scanner), (expression*)$2);
     }
     | LogicalExpression  {
         $$ = $1;
