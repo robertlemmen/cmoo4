@@ -48,7 +48,9 @@
 "Case"                  { return Case; }
 "Default"               { return Default; }
 
-_[A-Za-z][A-Za-z0-9_]*  { return SYSTEM_SYMBOL; }
+_[A-Za-z][A-Za-z0-9_]*  { yylval->sval = malloc(strlen(yytext)+1);
+                          strcpy(yylval->sval, yytext+1);
+                          return SYSTEM_SYMBOL; }
 \.[A-Za-z][A-Za-z0-9_]* { yylval->sval = malloc(strlen(yytext)+1);
                           strcpy(yylval->sval, yytext+1);
                           return LOCAL_SYMBOL; }

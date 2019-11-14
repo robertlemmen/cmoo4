@@ -137,15 +137,18 @@ typedef union
     int type;
 }
 
-%operation void dump(ast_node *n, int d, bool first)
+%operation void dump(ast_node *n, int d, bool first, bool comma)
 
 dump(list_entry) {
     if (n->prev) {
-        dump((ast_node*)n->prev, d, false);
-        dump(n->entry, d, false);
+        dump((ast_node*)n->prev, d, false, comma);
+        if (comma) {
+            printf(", ");
+        }
+        dump(n->entry, d, false, comma);
     }
     else {
-        dump(n->entry, d, true);
+        dump(n->entry, d, true, comma);
     }
 }
 
@@ -158,10 +161,10 @@ dump(object_def) {
         n->exported ? "Exported " : "",
         n->name);
     if (n->globals) {
-        dump((ast_node*)n->globals, d+1, false);
+        dump((ast_node*)n->globals, d+1, false, false);
     }
     if (n->slots) {
-        dump((ast_node*)n->slots, d+1, false);
+        dump((ast_node*)n->slots, d+1, false, false);
     }
     printf("# %s}\n\n", indent);
 }
@@ -173,7 +176,7 @@ dump(global) {
     printf("# %sGlobal %s = ", 
         indent, 
         n->name);
-    dump((ast_node*)n->value, d, false);
+    dump((ast_node*)n->value, d, false, false);
     printf(";\n");
 }
 
@@ -183,10 +186,10 @@ dump(slot) {
     indent[d*2] = '\0';
     printf("# %sSlot %s(", indent, n->name);
     if (n->arguments) {
-        dump((ast_node*)n->arguments, d, false);
+        dump((ast_node*)n->arguments, d, false, false);
     }
     printf(") ");
-    dump((ast_node*)n->body, d, false);
+    dump((ast_node*)n->body, d, false, false);
 }
 
 dump(argument) {
@@ -199,7 +202,7 @@ dump(block) {
     indent[d*2] = '\0';
     printf("{\n");
     if (n->statements) {
-        dump((ast_node*)n->statements, d+1, false);
+        dump((ast_node*)n->statements, d+1, false, false);
     }
     printf("# %s}\n", indent);
 }
@@ -209,7 +212,7 @@ dump(var_decl) {
     memset(indent, ' ', d*2);
     indent[d*2] = '\0';
     printf("# %sVar %s = ", indent, n->name);
-    dump((ast_node*)n->init_expr, d, false);
+    dump((ast_node*)n->init_expr, d, false, false);
     printf(";\n");
 }
 
@@ -218,7 +221,7 @@ dump(assignment) {
     memset(indent, ' ', d*2);
     indent[d*2] = '\0';
     printf("# %s%s%s = ", indent, n->type == SYMBOL_LOCAL ? "." : "", n->name);
-    dump((ast_node*)n->expr, d, false);
+    dump((ast_node*)n->expr, d, false, false);
     printf(";\n");
 }
 
@@ -227,7 +230,7 @@ dump(return_stmt) {
     memset(indent, ' ', d*2);
     indent[d*2] = '\0';
     printf("# %sreturn ", indent);
-    dump((ast_node*)n->ret_expr, d, false);
+    dump((ast_node*)n->ret_expr, d, false, false);
     printf(";\n");
 }
 
@@ -236,7 +239,7 @@ dump(expr_exec) {
     memset(indent, ' ', d*2);
     indent[d*2] = '\0';
     printf("# %s", indent);
-    dump((ast_node*)n->expr, d, false);
+    dump((ast_node*)n->expr, d, false, false);
     printf(";\n");
 }
 
@@ -252,18 +255,18 @@ dump(this_expr) {
 
 dump(new_expr) {
     printf("New ");
-    dump((ast_node*)n->proto_expr, d, false);
+    dump((ast_node*)n->proto_expr, d, false, false);
 }
 
 dump(not_expr) {
     printf("(Not ");
-    dump((ast_node*)n->child_expr, d, false);
+    dump((ast_node*)n->child_expr, d, false, false);
     printf(")");
 }
 
 dump(binary_expr) {
     printf("(");
-    dump((ast_node*)n->left, d, false);
+    dump((ast_node*)n->left, d, false, false);
     switch (n->op) {
         case OP_AND:
             printf(" AND ");
@@ -310,7 +313,7 @@ dump(binary_expr) {
         default:
             printf(" ?? ");
     }
-    dump((ast_node*)n->right, d, false);
+    dump((ast_node*)n->right, d, false, false);
     printf(")");
 }
 
@@ -335,22 +338,22 @@ dump(call) {
         case SYMBOL_LOCAL:
             printf(".%s(", n->name);
             if (n->arg_exprs) {
-                dump((ast_node*)n->arg_exprs, d, false);
+                dump((ast_node*)n->arg_exprs, d, false, true);
             }
             printf(")");
             break;
         case SYMBOL_OBJECT:
-            dump((ast_node*)n->obj_expr, d, false);
+            dump((ast_node*)n->obj_expr, d, false, false);
             printf(".%s(", n->name);
             if (n->arg_exprs) {
-                dump((ast_node*)n->arg_exprs, d, false);
+                dump((ast_node*)n->arg_exprs, d, false, true);
             }
             printf(")");
             break;
         case SYMBOL_SYSTEM:
             printf("_%s(", n->name);
             if (n->arg_exprs) {
-                dump((ast_node*)n->arg_exprs, d, false);
+                dump((ast_node*)n->arg_exprs, d, false, true);
             }
             printf(")");
             break;

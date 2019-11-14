@@ -122,7 +122,7 @@ File: CompUnitLine ObjectDefList {
     printf("parsed file ok, compunit is '%s'\n", $1);
     printf("contained objects:\n");
     list_entry *cle = (list_entry*)$2;
-    dump((ast_node*)cle, 0, false);
+    dump((ast_node*)cle, 0, false, false);
 }
 
 CompUnitLine: CompUnit SYMBOL ';' {
@@ -369,7 +369,7 @@ Statement: VarDeclaration {
         $$ = $1;
     }
     | Expression ';' {
-        $$ = expr_exec_create(yyget_extra(scanner), (expression*)$1);
+        $$ = (ast_node*)expr_exec_create(yyget_extra(scanner), (expression*)$1);
     }
 
 VarDeclaration: Var SYMBOL ';' {
