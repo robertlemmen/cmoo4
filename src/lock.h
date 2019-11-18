@@ -1,49 +1,29 @@
 #ifndef LOCK_H
 #define LOCK_H
 
+/* this is recursive (same thread can take the same lock multiple times), fair,
+ * R/W, upgrading (R->W) and deadlock-detecting lock implementation */
+
+/* return values from lock_lock */
 #define LOCK_TAKEN      0
 #define LOCK_DEADLOCK   1
 
+/* locking modes */
+// XXX perhaps shared/exclusive?
+#define LOCK_READ       0
+#define LOCK_WRITE      1
+
 struct lock;
+struct store_tx;
 
 struct lock* lock_new(void);
 void lock_free(struct lock *l);
 
-int lock_lock(struct lock *l);
-void lock_unlock(struct lock *l);
+/* these two take a opaque tx argument that is used to identify the transaction
+ * that wants the lock, this module never looks into it and treats it as a
+ * void pointer. */
+// XXX a small and reused tx integer would make things so much easier...
+int lock_lock(struct lock *l, int lock_mode, struct store_tx *tx);
+void lock_unlock(struct lock *l, struct store_tx *tx);
 
-/* === old implementation, remove once happy with current ===
-
- * this subsystem implements fair and deadlock-detecting locks that can be used
- * in blocking and non-blocking mode. in blocking mode the attempt to lock it
- * may block just like a mutex, in non-blocking mode it just returns an object 
- * that can be used to query the current status of the requested reservation. this
- * still means this thread will get served before a later reservation or locking 
- * attempt 
-
-// XXX upgrade to excl/shared lock
-// XXX non-blocking access should allow async callback, which is tricky around race
-// conditions
-
-#define LOCK_FREE       0
-#define LOCK_RESERVED   1
-#define LOCK_TAKEN      2
-#define LOCK_DEADLOCK   3
-
-struct lock;
-struct lock_reservation;
-
-struct lock* lock_new(void);
-void lock_free(struct lock *l);
-
-// blocking access
-int lock_lock(struct lock *l);
-void lock_unlock(struct lock *l);
-
-// non-blocking access
-struct lock_reservation* lock_reserve(struct lock *l);
-int lock_reservation_status(struct lock_reservation *lr);
-int lock_reservation_wait(struct lock_reservation *lr);
-void lock_reservation_unlock(struct lock_reservation *lr);
-*/
 #endif /* LOCK_H */

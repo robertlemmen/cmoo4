@@ -29,7 +29,8 @@ int main(int argc, char **argv) {
     struct net_ctx *net = net_new_ctx(net_init_cb);
     net_start(net);
 
-    sleep(10);
+    // XXX we should really have a signal handler...
+    sleep(100);
 
     tasks_stop(tasks);
     tasks_free_ctx(tasks);

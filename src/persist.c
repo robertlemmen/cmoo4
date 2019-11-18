@@ -83,7 +83,7 @@ struct persist* persist_new(void) {
                         // the listener object created in "init"
                         OP_ARGS_LOCALS, 0x00, 0x03,
                         OP_LOAD_STRING, 0x00, 0x15, 0x00, 'n', 'e', 't', '_', 's', 'h', 'u', 't', 'd', 'o', 'w', 'n', '_', 'l', 'i', 's', 't', 'e', 'n', 'e', 'r',
-                        OP_LOAD_INT, 0x01, 0x39, 0x30, 0x00, 0x00,
+                        OP_LOAD_INT, 0x01, 0x39, 0x30, 0x00, 0x00, // XXX why do we have this number here and in init?
                         OP_PUSH, 0x00,
                         OP_PUSH, 0x01,
                         OP_SYSCALL, 0x01,
@@ -157,6 +157,20 @@ struct persist* persist_new(void) {
                         OP_ARGS_LOCALS, 0x02, 0x04,
                         OP_DEBUGR, 0x00,
                         OP_DEBUGR, 0x01,
+
+                        // in order to see contention better, this calls into a
+                        // object that does a write, and then sleeps a short
+                        // while with that lock held
+                        OP_PARENT, 0x02,
+                        OP_DEBUGR, 0x02,
+                        OP_PUSH, 0x02,
+                        OP_LOAD_STRING, 0x02, 0x09, 0x00, 'i', 'n', 'c', '_', 'c', 'o', 'u', 'n', 't',
+                        OP_PUSH, 0x02,
+                        OP_CLEAR, 0x02,
+                        OP_PUSH, 0x02,
+                        OP_CALL, 0x00,
+                        OP_USLEEP, 0x40, 0x42, 0x1F, 0x00,
+
                         OP_LOAD_STRING, 0x02, 0x10, 0x00, 'n', 'e', 't', '_', 's', 'o', 'c', 'k', 'e', 't', '_', 'w', 'r', 'i', 't', 'e',
                         OP_LOAD_STRING, 0x03, 0x02, 0x00, '>', ' ',
                         OP_LOAD_STRING, 0x04, 0x06, 0x00, 's', 'o', 'c', 'k', 'e', 't',
@@ -170,6 +184,18 @@ struct persist* persist_new(void) {
                         OP_SYSCALL, 0x03,
                         OP_HALT};
     obj_set_code(o2, "read", code7, sizeof(code7));
+
+    opcode code8[] = {
+                        OP_ARGS_LOCALS, 0x00, 0x03,
+                        OP_LOAD_STRING, 0x00, 0x05, 0x00, 'c', 'o', 'u', 'n', 't',
+                        OP_LOAD_INT, 0x01, 0x01, 0x00, 0x00, 0x00,
+                        OP_GETGLOBAL, 0x02, 0x00,
+                        OP_ADD, 0x02, 0x02, 0x01,
+                        OP_SETGLOBAL, 0x00, 0x02,
+                        OP_DEBUGR, 0x02,
+                        OP_RETURN, 0x02};
+    obj_set_code(o2, "inc_count", code8, sizeof(code8));
+    obj_set_global(o2, "count", val_make_int(0));
 
     return ret;
 }
