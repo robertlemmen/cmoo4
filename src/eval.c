@@ -19,7 +19,7 @@ union stack_element {
     val val;
     union stack_element *se;
     opcode *code;
-    struct object *obj;
+    struct lobject *obj;
 };
 
 struct syscall_entry {
@@ -54,7 +54,7 @@ struct eval_ctx {
     uint64_t task_id;
     struct store_tx *stx;
     // XXX bit of a kludge, need to find a better way to recurse
-    struct object *obj;
+    struct lobject *obj;
 };
 
 struct eval_ctx* eval_new_ctx(uint64_t task_id, struct store_tx *stx) {
@@ -87,14 +87,14 @@ void eval_free_ctx(struct eval_ctx *ctx) {
     free(ctx);
 }
 
-int eval_get_code_recursive(struct object *o, char *name, opcode **code_buf, struct store_tx *stx) {
+int eval_get_code_recursive(struct lobject *lo, char *name, opcode **code_buf, struct store_tx *stx) {
     // XXX this should really be BFS rather than DFS
-    int ret = obj_get_code(o, name, code_buf);
+    int ret = obj_get_code(lobject_get_object(lo), name, code_buf);
     int idx = 0;
-    int pc = obj_get_parent_count(o);
+    int pc = obj_get_parent_count(lobject_get_object(lo));
     while ((ret == 0) && (idx < pc)) {
-        object_id parent_id = obj_get_parent(o, idx);
-        struct object *parent = store_get_object(stx, parent_id);
+        object_id parent_id = obj_get_parent(lobject_get_object(lo), idx);
+        struct lobject *parent = store_get_object(stx, parent_id);
         // XXX assert it is non-null, should be
         ret = eval_get_code_recursive(parent, name, code_buf, stx);
         idx++;
@@ -252,7 +252,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             val obj_ref = ctx->sp[nargs * -1 - 2].val;
             // XXX assertions
             // XXX we need to push obj on the stack as well!!
-            struct object *obj = store_get_object(ctx->stx, val_get_objref(obj_ref));
+            struct lobject *obj = store_get_object(ctx->stx, val_get_objref(obj_ref));
             opcode *ccode;
             int ret = eval_get_code_recursive(obj, val_get_string_data(method_name), &ccode, ctx->stx);
             if (!ret) {
@@ -927,7 +927,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             uint8_t name = *((uint8_t*)ip);
             ip += 1;
             printf("| GETGLOBAL r0x%02X r0x%02X            |\n", dst, name);
-            val tval = obj_get_global(ctx->obj, val_get_string_data(ctx->fp[name].val));
+            val tval = obj_get_global(lobject_get_object(ctx->obj), val_get_string_data(ctx->fp[name].val));
             val_clear(&ctx->fp[dst].val);
             ctx->fp[dst].val = tval;
             DISPATCH();
@@ -938,7 +938,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             uint8_t rval = *((uint8_t*)ip);
             ip += 1;
             printf("| SETGLOBAL r0x%02X r0x%02X            |\n", name, rval);
-            obj_set_global(ctx->obj, val_get_string_data(ctx->fp[name].val), ctx->fp[rval].val);
+            obj_set_global(lobject_get_object(ctx->obj), val_get_string_data(ctx->fp[name].val), ctx->fp[rval].val);
             DISPATCH();
         }
         do_make_obj: {
@@ -948,9 +948,9 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             ip += 1;
             printf("| MAKE_OBJ r0x%02X r0x%02X             |\n", new_ref, parent_ref);
             // XXX assert parent_ref is an objref and that both are in range
-            struct object *obj = store_make_object(ctx->stx, val_get_objref(ctx->fp[parent_ref].val));
+            struct lobject *obj = store_make_object(ctx->stx, val_get_objref(ctx->fp[parent_ref].val));
             val_clear(&ctx->fp[new_ref].val);
-            ctx->fp[new_ref].val = val_make_objref(obj_get_id(obj));
+            ctx->fp[new_ref].val = val_make_objref(obj_get_id(lobject_get_object(obj)));
             DISPATCH();
         }
         do_self: {
@@ -959,7 +959,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             printf("| SELF r0x%02X                       |\n", dst);
             // XXX check in range
             val_clear(&ctx->fp[dst].val);
-            ctx->fp[dst].val = val_make_objref(obj_get_id(ctx->obj));
+            ctx->fp[dst].val = val_make_objref(obj_get_id(lobject_get_object(ctx->obj)));
             // XXX
             DISPATCH();
         }
@@ -969,8 +969,8 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             printf("| PARENT r0x%02X                     |\n", dst);
             // XXX check in range
             val_clear(&ctx->fp[dst].val);
-            if (obj_get_parent_count(ctx->obj) > 0) {
-                ctx->fp[dst].val = val_make_objref(obj_get_parent(ctx->obj, 0));
+            if (obj_get_parent_count(lobject_get_object(ctx->obj)) > 0) {
+                ctx->fp[dst].val = val_make_objref(obj_get_parent(lobject_get_object(ctx->obj), 0));
             }
             DISPATCH();
         }
@@ -985,7 +985,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
     // XXX val_clear the whole stack
 }
 
-void eval_exec_method(struct eval_ctx *ctx, struct object *obj, val method, int num_args, ...) {
+void eval_exec_method(struct eval_ctx *ctx, struct lobject *obj, val method, int num_args, ...) {
     // XXX find method on object, load code, push args and exec
     // XXX ...for now, this isn't quite right around globals and an object stack
 
@@ -1003,7 +1003,8 @@ void eval_exec_method(struct eval_ctx *ctx, struct object *obj, val method, int 
     }
     else {
         // XXX raise
-        printf("!! method '%s' not found on object %li\n", val_get_string_data(method), obj_get_id(obj));
+        printf("!! method '%s' not found on object %li\n", val_get_string_data(method),
+            obj_get_id(lobject_get_object(obj)));
     }
 }
 

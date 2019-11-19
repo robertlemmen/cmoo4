@@ -27,10 +27,10 @@ void store_finish_tx(struct store_tx *tx);
  * a deadlock occured */
 // XXX do we need to be able to distinguish between the two? surprisingly we might 
 // not: no-such-object should never happen and would be fatal as well..
-struct object* store_get_object(struct store_tx *tx, object_id oid);
+struct lobject* store_get_object(struct store_tx *tx, object_id oid);
 
 /* create a new, empty object with an initial parent link. the id is allocated */
-struct object* store_make_object(struct store_tx *tx, object_id parent_id);
+struct lobject* store_make_object(struct store_tx *tx, object_id parent_id);
 
 // XXX we need a way to write to an object, but only have the writable copy in the TX
 // until comitted

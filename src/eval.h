@@ -3,7 +3,7 @@
 
 #include "defs.h"
 #include "types.h"
-#include "object.h"
+#include "lobject.h"
 
 /* the virtual machine in CMOO uses a stack where elements can be accessed 
  * in an indexed, register-like fashion as well. to do this we have a stack 
@@ -166,7 +166,7 @@ void eval_set_dbg_handler(struct eval_ctx *ctx,
 
 // execute a method on an object
 // XXX return success/error
-void eval_exec_method(struct eval_ctx *ctx, struct object *obj, val method, int num_args, ...);
+void eval_exec_method(struct eval_ctx *ctx, struct lobject *obj, val method, int num_args, ...);
 
 // debug clutch to allow direct execution of code without objects and the like.
 // This is only used by test drivers and debug code, not by an actual CMOO server

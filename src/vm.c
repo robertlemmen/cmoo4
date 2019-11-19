@@ -10,7 +10,7 @@
 #include "tasks.h"
 #include "types.h"
 #include "store.h"
-#include "object.h"
+#include "lobject.h"
 #include "eval.h"
 
 // -------- implementation of declared public structures --------
@@ -25,7 +25,7 @@ struct vm_eval_ctx {
     struct store_tx *stx;
     struct eval_ctx *eval_ctx;
     // XXX for now, we might want to store this on the stack instead
-    struct object *start_obj;
+    struct lobject *start_obj;
     uint64_t task_id;
 };
 
@@ -117,7 +117,7 @@ void vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...) {
     va_list argp;
     va_start(argp, num_args);
 
-    object_id oid = obj_get_id(ex->start_obj);
+    object_id oid = obj_get_id(lobject_get_object(ex->start_obj));
 
     printf("# vm_eval_ctx_exec %p oid=%li slot=%s num_args=%i\n", ex,
         oid, val_get_string_data(method), num_args);

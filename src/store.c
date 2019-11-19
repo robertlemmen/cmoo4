@@ -76,7 +76,7 @@ void store_finish_tx(struct store_tx *tx) {
     free(tx);
 }
 
-struct object* store_get_object(struct store_tx *tx, object_id oid) {
+struct lobject* store_get_object(struct store_tx *tx, object_id oid) {
     printf("## store_get_object %li\n", oid);
     struct store *s = tx->store;
     struct lobject *lo;
@@ -105,10 +105,10 @@ struct object* store_get_object(struct store_tx *tx, object_id oid) {
     list_node->next = tx->locked;
     tx->locked = list_node;
 
-    return lobject_get_object(lo);
+    return lo;
 }
 
-struct object* store_make_object(struct store_tx *tx, object_id parent_id) {
+struct lobject* store_make_object(struct store_tx *tx, object_id parent_id) {
     printf("## store_make_object %li\n", parent_id);
     struct store *s = tx->store;
     pthread_mutex_lock(&s->cache_latch);
@@ -132,6 +132,6 @@ struct object* store_make_object(struct store_tx *tx, object_id parent_id) {
     list_node->next = tx->locked;
     tx->locked = list_node;
 
-    return obj;
+    return lo;
 }
 
