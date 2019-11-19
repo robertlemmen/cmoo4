@@ -6,6 +6,9 @@
  * and therefore "pinned" in a cache
  * XXX in the future this might need up to two versions of the object so that
  * a tx that cehcked out an object for writing has it's own copy
+ * XXX really? are we not doing R/W locking rather than MVCC? so we have
+ * exclusive access, we just need to throw away and reload from persistence on
+ * rollback if dirty...
  * XXX while it seemed to make sense to split this at some point, it seems super
  * awkward now. so it could be folded into the object itself? but then how do we
  * handle two versions?

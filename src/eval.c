@@ -616,7 +616,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
                     != val_type(ctx->fp[src_b].val) ) {
                 printf("!! argument type mismatch\n");
             }
-            val_clear(&ctx->fp[dst].val);
+            val_clear(&ctx->fp[dst].val); // XXX rubbish! dst can be a source as well, so we cannot clear until we have a result!
             bool result = false;
             if (val_type(ctx->fp[src_a].val) == TYPE_INT) {
                 result = val_get_int(ctx->fp[src_a].val) 
@@ -638,6 +638,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             else {
                 printf("!! argument type mismatch\n");
             }
+            printf("=> %s\n", result ? "true" : "false");
             ctx->fp[dst].val = val_make_bool(result);
             DISPATCH();
         }
@@ -876,7 +877,9 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             }
             if (val_type(ctx->fp[src].val) == TYPE_STRING) {
                 val_clear(&ctx->fp[dst].val);
-                ctx->fp[dst].val = val_make_int(val_get_string_len(ctx->fp[src].val));
+                int result = val_get_string_len(ctx->fp[src].val);
+                printf("=> %i\n", result);
+                ctx->fp[dst].val = val_make_int(result);
             }
             else {
                 // XXX raise
@@ -938,6 +941,8 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             uint8_t rval = *((uint8_t*)ip);
             ip += 1;
             printf("| SETGLOBAL r0x%02X r0x%02X            |\n", name, rval);
+            printf("### locking %li EXCLUSIVE\n", obj_get_id(lobject_get_object(ctx->obj)));
+            lock_lock(lobject_get_lock(ctx->obj), LOCK_EXCLUSIVE, ctx->stx);
             obj_set_global(lobject_get_object(ctx->obj), val_get_string_data(ctx->fp[name].val), ctx->fp[rval].val);
             DISPATCH();
         }

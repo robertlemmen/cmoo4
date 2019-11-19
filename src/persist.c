@@ -154,10 +154,14 @@ struct persist* persist_new(void) {
     obj_set_code(o2, "closed", code6, sizeof(code6));
 
     opcode code7[] = {
-                        OP_ARGS_LOCALS, 0x02, 0x04,
+                        OP_ARGS_LOCALS, 0x02, 0x07,
                         OP_DEBUGR, 0x00,
                         OP_DEBUGR, 0x01,
+                        OP_LOAD_INT, 0x06, 0x05, 0x00, 0x00, 0x00, // to compare the string length
 
+                        OP_LENGTH, 0x07, 0x01,
+                        OP_LT, 0x08, 0x07, 0x06, 
+                        OP_JUMP_IF, 0x08, 0x1B, 0x00, 0x00, 0x00, // beware, relative jumps are a bitch in hand-coded assembly like this!
                         // in order to see contention better, this calls into a
                         // object that does a write, and then sleeps a short
                         // while with that lock held
