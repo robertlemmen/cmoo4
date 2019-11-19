@@ -1,8 +1,12 @@
 #ifndef LOBJECT_H
 #define LOBJECT_H
 
-/* this implements a simple structure that ties together different versions
- * of a given object and the locks required to protect them */
+/* this implements a simple pair of an object and a corresponding lock,
+ * as well as a flag that indicates whether the object is currently in use
+ * and therefore "pinned" in a cache
+ * XXX in the future this might need up to two versions of the object so that
+ * a tx that cehcked out an object for writing has it's own copy
+ * */
 
 #include "object.h"
 #include "lock.h"

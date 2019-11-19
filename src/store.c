@@ -97,7 +97,7 @@ struct object* store_get_object(struct store_tx *tx, object_id oid) {
     pthread_mutex_unlock(&s->cache_latch);
 
     printf("### locking %li\n", obj_get_id(lobject_get_object(lo)));
-    lock_lock(lobject_get_lock(lo), LOCK_WRITE, tx);
+    lock_lock(lobject_get_lock(lo), LOCK_SHARED, tx);
 
     // put in tx to release later
     struct lobject_list_node *list_node = malloc(sizeof(struct lobject_list_node));
@@ -121,7 +121,7 @@ struct object* store_make_object(struct store_tx *tx, object_id parent_id) {
     lobject_set_lock(lo, l);
     cache_put_object(s->cache, lo);
     printf("### locking %li\n", obj_get_id(lobject_get_object(lo)));
-    lock_lock(lobject_get_lock(lo), LOCK_WRITE, tx);
+    lock_lock(lobject_get_lock(lo), LOCK_EXCLUSIVE, tx);
     pthread_mutex_unlock(&s->cache_latch);
     printf("##   -> %li\n", obj_get_id(obj));
 

@@ -28,6 +28,20 @@ struct lock {
 
 // -------- internal functions ---------
 
+struct lock_waitgroup* lock_waitgroup_new(int lock_mode, struct store_tx *tx) {
+    struct lock_waitgroup *nwg = malloc(sizeof(struct lock_waitgroup));
+    nwg->mode = lock_mode;
+    if (pthread_cond_init(&nwg->sema, NULL) != 0) {
+        fprintf(stderr, "pthread_cond_init failed\n");
+        exit(1);
+    }
+    nwg->entry_count = 1;
+    nwg->entries = malloc(sizeof(struct store_tx*) * nwg->entry_count);
+    nwg->entries[0] = tx;
+    nwg->next = NULL;
+    return nwg;
+}
+
 // -------- implementation of public functions --------
 
 struct lock* lock_new(void) {
@@ -54,21 +68,12 @@ int lock_lock(struct lock *l, int lock_mode, struct store_tx *tx) {
     // XXX for now we only do exclusive locks, this is easier and functionally
     // ok, just more contention. once that works, future changes can improve on
     // this
-    lock_mode = LOCK_WRITE;
+    lock_mode = LOCK_EXCLUSIVE;
     pthread_mutex_lock(&l->latch);
 
     // case A: if the lock has no wait groups, just create one and we have the lock
     if (l->first_wait_group == NULL) {
-        struct lock_waitgroup *nwg = malloc(sizeof(struct lock_waitgroup));
-        nwg->mode = lock_mode;
-        if (pthread_cond_init(&nwg->sema, NULL) != 0) {
-            fprintf(stderr, "pthread_cond_init failed\n");
-            exit(1);
-        }
-        nwg->entry_count = 1;
-        nwg->entries = malloc(sizeof(struct store_tx*) * nwg->entry_count);
-        nwg->entries[0] = tx;
-        nwg->next = NULL;
+        struct lock_waitgroup *nwg = lock_waitgroup_new(lock_mode, tx);
         l->first_wait_group = nwg;
         l->last_wait_group = nwg;
         pthread_mutex_unlock(&l->latch);
@@ -78,8 +83,7 @@ int lock_lock(struct lock *l, int lock_mode, struct store_tx *tx) {
     // case B: if we already hold the lock in the same or higher mode, just return
     // we actually want the same mode or a "higher" one, exclusive > shared,
     // but don't want to rely on the enum ordering
-    // XXX perhaps we should?
-    if ((l->first_wait_group->mode == lock_mode) || (l->first_wait_group->mode == LOCK_WRITE)) {
+    if ((l->first_wait_group->mode == lock_mode) || (l->first_wait_group->mode == LOCK_EXCLUSIVE)) {
         for (int i = 0; i < l->first_wait_group->entry_count; i++) {
             if (l->first_wait_group->entries[i] == tx) {
                 pthread_mutex_unlock(&l->latch);
@@ -91,25 +95,17 @@ int lock_lock(struct lock *l, int lock_mode, struct store_tx *tx) {
     // case C: if there is a waitgroup, and the last one is read-only, and this tx wants read-only,
     // just join and wait
     // XXX not at the moment as all our locks are exclusive
-    assert(lock_mode == LOCK_WRITE);
+    assert(lock_mode == LOCK_EXCLUSIVE);
 
     // case D / otherwise: add a new waitgroup to the end, wait
     // XXX creation is the same as above, refactor
-    struct lock_waitgroup *nwg = malloc(sizeof(struct lock_waitgroup));
-    nwg->mode = lock_mode;
-    if (pthread_cond_init(&nwg->sema, NULL) != 0) {
-        fprintf(stderr, "pthread_cond_init failed\n");
-        exit(1);
-    }
-    nwg->entry_count = 1;
-    nwg->entries = malloc(sizeof(struct store_tx*) * nwg->entry_count);
-    nwg->entries[0] = tx;
-    nwg->next = NULL;
+    struct lock_waitgroup *nwg = lock_waitgroup_new(lock_mode, tx);
     l->last_wait_group->next = nwg;
     l->last_wait_group = nwg;
-    while (nwg != l->first_wait_group) {
+    // now wait for the lock to be available
+    do {
         pthread_cond_wait(&nwg->sema, &l->latch);
-    }
+    } while (nwg != l->first_wait_group);
     pthread_mutex_unlock(&l->latch);
     return LOCK_TAKEN;
 }
@@ -117,7 +113,7 @@ int lock_lock(struct lock *l, int lock_mode, struct store_tx *tx) {
 void lock_unlock(struct lock *l, struct store_tx *tx) {
     pthread_mutex_lock(&l->latch);
 
-    // becasue of the recursive nature of the lock, it is possible that there
+    // because of the recursive nature of the lock, it is possible that there
     // isn't a waitgroup at all...
     if (!l->first_wait_group) {
         pthread_mutex_unlock(&l->latch);
@@ -156,7 +152,7 @@ void lock_unlock(struct lock *l, struct store_tx *tx) {
         free(old);
         // now we can wake the threads in the next wait group
         if (l->first_wait_group) {
-            pthread_cond_signal(&l->first_wait_group->sema);
+            pthread_cond_broadcast(&l->first_wait_group->sema);
         }
     }
 

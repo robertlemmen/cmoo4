@@ -9,9 +9,8 @@
 #define LOCK_DEADLOCK   1
 
 /* locking modes */
-// XXX perhaps shared/exclusive?
-#define LOCK_READ       0
-#define LOCK_WRITE      1
+#define LOCK_SHARED       0
+#define LOCK_EXCLUSIVE    1
 
 struct lock;
 struct store_tx;
