@@ -159,6 +159,7 @@ struct persist* persist_new(void) {
                         OP_DEBUGR, 0x01,
                         OP_LOAD_INT, 0x06, 0x05, 0x00, 0x00, 0x00, // to compare the string length
 
+                        OP_USLEEP, 0x40, 0x42, 0x1F, 0x00,
                         OP_LENGTH, 0x07, 0x01,
                         OP_LT, 0x08, 0x07, 0x06, 
                         OP_JUMP_IF, 0x08, 0x1B, 0x00, 0x00, 0x00, // beware, relative jumps are a bitch in hand-coded assembly like this!
@@ -173,7 +174,6 @@ struct persist* persist_new(void) {
                         OP_CLEAR, 0x02,
                         OP_PUSH, 0x02,
                         OP_CALL, 0x00,
-                        OP_USLEEP, 0x40, 0x42, 0x1F, 0x00,
 
                         OP_LOAD_STRING, 0x02, 0x10, 0x00, 'n', 'e', 't', '_', 's', 'o', 'c', 'k', 'e', 't', '_', 'w', 'r', 'i', 't', 'e',
                         OP_LOAD_STRING, 0x03, 0x02, 0x00, '>', ' ',

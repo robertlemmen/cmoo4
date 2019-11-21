@@ -4,9 +4,11 @@
 /* this is recursive (same thread can take the same lock multiple times), fair,
  * R/W, upgrading (R->W) and deadlock-detecting lock implementation */
 
-/* return values from lock_lock */
+/* return values from lock_lock, LOCK_TAKEN is success, everything else a
+ * failure */
 #define LOCK_TAKEN      0
 #define LOCK_DEADLOCK   1
+#define LOCK_STALE      2
 
 /* locking modes */
 #define LOCK_SHARED       0

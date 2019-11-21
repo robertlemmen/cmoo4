@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <assert.h>
 // XXX
 #include <stdio.h>
 
@@ -95,6 +96,7 @@ int eval_get_code_recursive(struct lobject *lo, char *name, opcode **code_buf, s
     while ((ret == 0) && (idx < pc)) {
         object_id parent_id = obj_get_parent(lobject_get_object(lo), idx);
         struct lobject *parent = store_get_object(stx, parent_id);
+        assert(parent);
         // XXX assert it is non-null, should be
         ret = eval_get_code_recursive(parent, name, code_buf, stx);
         idx++;
@@ -253,6 +255,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             // XXX assertions
             // XXX we need to push obj on the stack as well!!
             struct lobject *obj = store_get_object(ctx->stx, val_get_objref(obj_ref));
+            assert(obj);
             opcode *ccode;
             int ret = eval_get_code_recursive(obj, val_get_string_data(method_name), &ccode, ctx->stx);
             if (!ret) {
@@ -943,6 +946,8 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             printf("| SETGLOBAL r0x%02X r0x%02X            |\n", name, rval);
             printf("### locking %li EXCLUSIVE\n", obj_get_id(lobject_get_object(ctx->obj)));
             lock_lock(lobject_get_lock(ctx->obj), LOCK_EXCLUSIVE, ctx->stx);
+            // XXX if this returns anything but success, we need to retry the
+            // transaction
             obj_set_global(lobject_get_object(ctx->obj), val_get_string_data(ctx->fp[name].val), ctx->fp[rval].val);
             DISPATCH();
         }

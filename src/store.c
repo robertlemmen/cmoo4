@@ -97,7 +97,9 @@ struct lobject* store_get_object(struct store_tx *tx, object_id oid) {
     pthread_mutex_unlock(&s->cache_latch);
 
     printf("### locking %li SHARED\n", obj_get_id(lobject_get_object(lo)));
-    lock_lock(lobject_get_lock(lo), LOCK_SHARED, tx);
+    if (lock_lock(lobject_get_lock(lo), LOCK_SHARED, tx)) {
+        return NULL;
+    }
 
     // put in tx to release later
     struct lobject_list_node *list_node = malloc(sizeof(struct lobject_list_node));

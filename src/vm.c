@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
+#include <assert.h>
 
 // XXX
 #include <stdio.h>
@@ -98,6 +99,7 @@ struct vm_eval_ctx* vm_get_eval_ctx(struct vm *v, object_id id, uint64_t task_id
     ret->task_id = task_id;
     ret->stx = store_start_tx(v->store);
     ret->start_obj = store_get_object(ret->stx, id);
+    assert(ret->start_obj);
     printf("# vm_get_eval_ctx %li -> %p\n", id, ret);
 
     ret->eval_ctx = eval_new_ctx(task_id, ret->stx);
