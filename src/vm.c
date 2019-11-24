@@ -115,7 +115,7 @@ void vm_free_eval_ctx(struct vm_eval_ctx *ex) {
     free(ex);
 }
 
-void vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...) {
+int vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...) {
     va_list argp;
     va_start(argp, num_args);
 
@@ -124,16 +124,17 @@ void vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...) {
     printf("# vm_eval_ctx_exec %p oid=%li slot=%s num_args=%i\n", ex,
         oid, val_get_string_data(method), num_args);
 
+    int ret;
     // argh... http://c-faq.com/varargs/handoff.html
     if (num_args == 0) {
-        eval_exec_method(ex->eval_ctx, ex->start_obj, method, 0);
+        ret = eval_exec_method(ex->eval_ctx, ex->start_obj, method, 0);
     }
     else if (num_args == 1) {
         val arg0 = va_arg(argp, val);
         char *arg_text = val_print(arg0);
         printf("    %s\n", arg_text);
         free(arg_text);
-        eval_exec_method(ex->eval_ctx, ex->start_obj, method, 1, arg0);
+        ret = eval_exec_method(ex->eval_ctx, ex->start_obj, method, 1, arg0);
     }
     else if (num_args == 2) {
         val arg0 = va_arg(argp, val);
@@ -144,12 +145,14 @@ void vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...) {
         arg_text = val_print(arg1);
         printf("    %s\n", arg_text);
         free(arg_text);
-        eval_exec_method(ex->eval_ctx, ex->start_obj, method, 2, arg0, arg1);
+        ret = eval_exec_method(ex->eval_ctx, ex->start_obj, method, 2, arg0, arg1);
     }
     else {
         printf("#  unsupported number of args in call to VM!\n");
+        // XXX unrecoverable
     }
 
     va_end(argp);
     store_finish_tx(ex->stx);
+    return ret;
 }

@@ -206,6 +206,8 @@ void* tasks_thread_func(void *arg) {
 
         // second step of processing the item, without global lock
         printf("### tasks processing an item on thread 0x%016lX\n", pthread_self());
+        // XXX this one we need to do in a loop until it succeeded or failed, 
+        // but EVAL_RETRY_TX should just undo the network output and retry
         val slot;
         switch (current_item->type) {
             case QUEUE_TYPE_INIT:

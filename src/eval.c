@@ -84,6 +84,7 @@ void eval_set_dbg_handler(struct eval_ctx *ctx,
 }
 
 void eval_free_ctx(struct eval_ctx *ctx) {
+    // XXX hmm, do we need to clear the active parts of the stack first?
     free(ctx->stack);
     free(ctx);
 }
@@ -104,7 +105,7 @@ int eval_get_code_recursive(struct lobject *lo, char *name, opcode **code_buf, s
     return ret;
 }
 
-void eval_exec(struct eval_ctx *ctx, opcode *code) {
+int eval_exec(struct eval_ctx *ctx, opcode *code) {
     // XXX we probably want to cache sp/fp/ip in register variables
     void* dispatch_table[] = {
         &&do_noop,
@@ -168,7 +169,7 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
                 ctx->sp--;
             }
             printf("'----------------------------------'\n");
-            return;
+            return EVAL_OK;
             DISPATCH();
         }
         do_debugi: {
@@ -945,9 +946,9 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             ip += 1;
             printf("| SETGLOBAL r0x%02X r0x%02X            |\n", name, rval);
             printf("### locking %li EXCLUSIVE\n", obj_get_id(lobject_get_object(ctx->obj)));
-            lock_lock(lobject_get_lock(ctx->obj), LOCK_EXCLUSIVE, ctx->stx);
-            // XXX if this returns anything but success, we need to retry the
-            // transaction
+            if (lock_lock(lobject_get_lock(ctx->obj), LOCK_EXCLUSIVE, ctx->stx)) {
+                return EVAL_RETRY_TX;
+            }
             obj_set_global(lobject_get_object(ctx->obj), val_get_string_data(ctx->fp[name].val), ctx->fp[rval].val);
             DISPATCH();
         }
@@ -992,10 +993,12 @@ void eval_exec(struct eval_ctx *ctx, opcode *code) {
             DISPATCH();
         }
     }
-    // XXX val_clear the whole stack
+    // XXX we can never get here...
+    assert(false);
+    return EVAL_OK;
 }
 
-void eval_exec_method(struct eval_ctx *ctx, struct lobject *obj, val method, int num_args, ...) {
+int eval_exec_method(struct eval_ctx *ctx, struct lobject *obj, val method, int num_args, ...) {
     // XXX find method on object, load code, push args and exec
     // XXX ...for now, this isn't quite right around globals and an object stack
 
@@ -1009,12 +1012,12 @@ void eval_exec_method(struct eval_ctx *ctx, struct lobject *obj, val method, int
     int ret = eval_get_code_recursive(obj, val_get_string_data(method), &code, ctx->stx);
     if (ret) {
         ctx->obj = obj;
-        eval_exec(ctx, code);
+        return eval_exec(ctx, code);
     }
     else {
-        // XXX raise
         printf("!! method '%s' not found on object %li\n", val_get_string_data(method),
             obj_get_id(lobject_get_object(obj)));
+        return 2; // XXX actually the unrecoverable error
     }
 }
 

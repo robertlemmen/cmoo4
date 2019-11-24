@@ -149,6 +149,10 @@
 
 // XXX more ops
 
+#define EVAL_OK             0   // evaluation finished successfully
+#define EVAL_RETRY_TX       1   // indicates that evaluation failed recoveraby, e.g. a deadlock
+// XXX need nonrecoverable error
+
 struct eval_ctx;
 
 struct syscall_table;
@@ -165,12 +169,14 @@ void eval_set_dbg_handler(struct eval_ctx *ctx,
     void *a);
 
 // execute a method on an object
-// XXX return success/error
-void eval_exec_method(struct eval_ctx *ctx, struct lobject *obj, val method, int num_args, ...);
+// returns 0 on success and EVAL_RETRY_TX if the attempt should be retried
+// because of a deadlock or stale lock
+int eval_exec_method(struct eval_ctx *ctx, struct lobject *obj, val method, int num_args, ...);
 
 // debug clutch to allow direct execution of code without objects and the like.
 // This is only used by test drivers and debug code, not by an actual CMOO server
-void eval_exec(struct eval_ctx *ctx, opcode *code);
+// returns like eval_exec_method (which is largely a wrapper around this)
+int eval_exec(struct eval_ctx *ctx, opcode *code);
 void eval_push_arg(struct eval_ctx *ctx, val v);
 
 // create/destroy/get/set a syscall table
