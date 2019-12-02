@@ -142,7 +142,7 @@ int lock_lock(struct lock *l, int lock_mode, struct store_tx *tx) {
                         l->first_wait_group->mode = LOCK_EXCLUSIVE;
                         pthread_mutex_unlock(&l->latch);
                         printf("### lock upgraded\n");
-                        return LOCK_STALE;
+                        return LOCK_TAKEN;
                     }
                     else {
                         // we need to enqueue and wait for that waitgroup to

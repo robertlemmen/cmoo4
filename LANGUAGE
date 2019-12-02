@@ -76,7 +76,7 @@ Expression = Literal
            | Expression ( '+' | '-' | '*' | '/' | '%' | '~' ) Expression
            | Expression ( '==' | '!=' | '<' | '<=' | '>=' | '>' ) Expression
            | 'Not' Expression
-           | 'New' Expression
+           | 'Clone' Expression
            | Expression ( 'And' | 'Or' ) Expression
            | SystemCall | ObjectCall | LocalCall
            | Symbol | LocalSymbol | ObjectSymbol

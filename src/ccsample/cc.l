@@ -16,7 +16,10 @@
 
 %%
 
-[ \t\n\r]               ;
+"//".*                  { /* comment XXX should also suport multi-line comments */ }
+
+[ \t\n\r]               { /* whitespace XXX does this not mean whitespace is not
+required anymore between e.g. a keyword and a symbol? */ }
 
 "CompUnit"              { return CompUnit; }
 "Exported"              { return Exported; }

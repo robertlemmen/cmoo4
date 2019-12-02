@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "types.h"
+#include "eval.h"
 
 // -------- internal structures --------
 
@@ -171,98 +172,114 @@ void* tasks_thread_func(void *arg) {
         uint64_t task_id = ctx->task_id_seq++;
 
         struct vm_eval_ctx *vm_eval_ctx = NULL;
+        int eval_ret = EVAL_RETRY_TX;
+        int queue_latch_held = 1;
 
-        // XXX all this processing needs to be aware of TX rollbacks and
-        // retry if necessary
+        while (eval_ret != EVAL_OK) {
+            // do first step of processing that requires lock to be held
+            switch (current_item->type) {
+                case QUEUE_TYPE_INIT:
+                    vm_init(ctx->vm, ctx);
+                    break;
+                case QUEUE_TYPE_LISTEN_ERROR:
+                    vm_eval_ctx = vm_get_eval_ctx(ctx->vm, current_item->listen_error_data.oid, task_id);
+                    break;
+                case QUEUE_TYPE_STOP:
+                    vm_eval_ctx = vm_get_eval_ctx(ctx->vm, 0, task_id);
+                    break;
+                case QUEUE_TYPE_ACCEPT:
+                    vm_eval_ctx = vm_get_eval_ctx(ctx->vm, current_item->accept_data.oid, task_id);
+                    break;
+                case QUEUE_TYPE_READ:;
+                    vm_eval_ctx = vm_get_eval_ctx(ctx->vm, current_item->read_data.oid, task_id);
+                    break;
+                case QUEUE_TYPE_CLOSED:
+                    vm_eval_ctx = vm_get_eval_ctx(ctx->vm, current_item->closed_data.oid, task_id);
+                    break;
+                default:
+                    printf("sdfggd\n");
+            }
+            // we want to wait until here to release the queue lock, so that two
+            // messages from the same socket can't be processed by two threads
+            // out of order. in the retry case we cannot guarantee that, but the
+            // task_id_seq will be preserved, and as long as we fault the
+            // younger transaction this is safe-ish
+            if (queue_latch_held) {
+                queue_latch_held = 0;
+                pthread_mutex_unlock(&ctx->queue_latch);
+            }
 
-        // do first step of processing that requires lock to be held
-        switch (current_item->type) {
-            case QUEUE_TYPE_INIT:
-                vm_init(ctx->vm, ctx);
-                break;
-            case QUEUE_TYPE_LISTEN_ERROR:
-                vm_eval_ctx = vm_get_eval_ctx(ctx->vm, current_item->listen_error_data.oid, task_id);
-                break;
-            case QUEUE_TYPE_STOP:
-                vm_eval_ctx = vm_get_eval_ctx(ctx->vm, 0, task_id);
-                break;
-            case QUEUE_TYPE_ACCEPT:
-                vm_eval_ctx = vm_get_eval_ctx(ctx->vm, current_item->accept_data.oid, task_id);
-                break;
-            case QUEUE_TYPE_READ:;
-                vm_eval_ctx = vm_get_eval_ctx(ctx->vm, current_item->read_data.oid, task_id);
-                break;
-            case QUEUE_TYPE_CLOSED:
-                vm_eval_ctx = vm_get_eval_ctx(ctx->vm, current_item->closed_data.oid, task_id);
-                break;
-            default:
-                printf("sdfggd\n");
+            // create network transaction
+            struct ntx_tx *net_tx = ntx_new_tx(ctx->ntx);
+
+            // second step of processing the item, without global lock
+            printf("### tasks processing an item on thread 0x%016lX\n", pthread_self());
+            // XXX this one we need to do in a loop until it succeeded or failed, 
+            // but EVAL_RETRY_TX should just undo the network output and retry
+            val slot;
+            switch (current_item->type) {
+                case QUEUE_TYPE_INIT:
+                    // handled within lock above
+                    eval_ret = EVAL_OK;
+                    break;
+                case QUEUE_TYPE_LISTEN_ERROR:
+                    slot = val_make_string(5, "error");
+                    eval_ret = vm_eval_ctx_exec(vm_eval_ctx, slot, 1,
+                        val_make_int(current_item->listen_error_data.errnum));
+                    val_dec_ref(slot);
+                    break;
+                case QUEUE_TYPE_STOP:
+                    slot = val_make_string(8, "shutdown");
+                    eval_ret = vm_eval_ctx_exec(vm_eval_ctx, slot, 0);
+                    val_dec_ref(slot);
+                    ctx->stop_flag = 1;
+                    break;
+                case QUEUE_TYPE_ACCEPT:
+                    slot = val_make_string(6, "accept");
+                    eval_ret = vm_eval_ctx_exec(vm_eval_ctx, slot, 1,
+                        val_make_special(current_item->accept_data.socket));
+                    val_dec_ref(slot);
+                    break;
+                case QUEUE_TYPE_READ:
+                    slot = val_make_string(4, "read");
+                    // XXX we really need a separate buffer type that takes pointer
+                    // and size, and that can be converted to a string using a
+                    // charset.
+                    // XXX strings require to be null-terminated, not 100%
+                    // sure that is really guaranteed at the moment...
+                    val data = val_make_string(current_item->read_data.size, current_item->read_data.buf);
+                    eval_ret = vm_eval_ctx_exec(vm_eval_ctx, slot, 2,
+                        val_make_special(net_tx),   // XXX is this the right way to pass net_tx into the vm?
+                                                    // should it not be doen the same way as the store_tx?
+                        data);
+                    val_dec_ref(slot);
+                    val_dec_ref(data);
+                    break;
+                case QUEUE_TYPE_CLOSED:
+                    slot = val_make_string(6, "closed");
+                    eval_ret = vm_eval_ctx_exec(vm_eval_ctx, slot, 1,
+                        val_make_special(current_item->closed_data.socket));
+                    val_dec_ref(slot);
+                    break;
+                default:
+                    printf("sdfdsffsd\n");
+            }
+            printf("## done processing an item on thread 0x%016lX --> %i\n", pthread_self(), eval_ret);
+            if (vm_eval_ctx) {
+                vm_free_eval_ctx(vm_eval_ctx);
+            }
+
+            // commit or roll-back the network transaction
+            if (eval_ret == EVAL_OK) {
+                ntx_commit_tx(net_tx);
+            }
+            else {
+                ntx_rollback_tx(net_tx);
+            }
         }
-
-        pthread_mutex_unlock(&ctx->queue_latch);
-
-        // create network transaction
-        struct ntx_tx *net_tx = ntx_new_tx(ctx->ntx);
-
-        // second step of processing the item, without global lock
-        printf("### tasks processing an item on thread 0x%016lX\n", pthread_self());
-        // XXX this one we need to do in a loop until it succeeded or failed, 
-        // but EVAL_RETRY_TX should just undo the network output and retry
-        val slot;
-        switch (current_item->type) {
-            case QUEUE_TYPE_INIT:
-                // handled within lock above
-                break;
-            case QUEUE_TYPE_LISTEN_ERROR:
-                slot = val_make_string(5, "error");
-                vm_eval_ctx_exec(vm_eval_ctx, slot, 1,
-                    val_make_int(current_item->listen_error_data.errnum));
-                val_dec_ref(slot);
-                break;
-            case QUEUE_TYPE_STOP:
-                slot = val_make_string(8, "shutdown");
-                vm_eval_ctx_exec(vm_eval_ctx, slot, 0);
-                val_dec_ref(slot);
-                ctx->stop_flag = 1;
-                break;
-            case QUEUE_TYPE_ACCEPT:
-                slot = val_make_string(6, "accept");
-                vm_eval_ctx_exec(vm_eval_ctx, slot, 1,
-                    val_make_special(current_item->accept_data.socket));
-                val_dec_ref(slot);
-                break;
-            case QUEUE_TYPE_READ:
-                slot = val_make_string(4, "read");
-                // XXX we really need a separate buffer type that takes pointer
-                // and size, and that can be converted to a string using a
-                // charset.
-                // XXX strings require to be null-terminated, not 100%
-                // sure that is really guaranteed at the moment...
-                val data = val_make_string(current_item->read_data.size, current_item->read_data.buf);
-                vm_eval_ctx_exec(vm_eval_ctx, slot, 2,
-                    val_make_special(net_tx),   // XXX is this the right way to pass net_tx into the vm?
-                                                // should it not be doen the same way as the store_tx?
-                    data);
-                val_dec_ref(slot);
-                val_dec_ref(data);
-                // XXX for now
-                free(current_item->read_data.buf);
-                break;
-            case QUEUE_TYPE_CLOSED:
-                slot = val_make_string(6, "closed");
-                vm_eval_ctx_exec(vm_eval_ctx, slot, 1,
-                    val_make_special(current_item->closed_data.socket));
-                val_dec_ref(slot);
-                break;
-            default:
-                printf("sdfdsffsd\n");
-        }
-        printf("## done processing an item on thread 0x%016lX\n", pthread_self());
-
-        // commit network transaction
-        ntx_commit_tx(net_tx);
-        if (vm_eval_ctx) {
-            vm_free_eval_ctx(vm_eval_ctx);
+        // clean up current queue item
+        if (current_item->type == QUEUE_TYPE_READ) {
+            free(current_item->read_data.buf);
         }
         free(current_item);
     }
