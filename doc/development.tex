@@ -1,10 +1,10 @@
 \documentclass[12pt,a4paper]{article}
 \usepackage[T1]{fontenc}
+\usepackage{lmodern}
 \usepackage[latin1]{inputenc}
 \usepackage[pdftex]{graphicx,color}  
-\usepackage{microtype}
 \usepackage{listings}
-\usepackage{longtable}
+\usepackage{arydshln}
 \usepackage{float}
 \usepackage[linkcolor=blue, colorlinks=true]{hyperref}
 
@@ -29,6 +29,9 @@
 \widowpenalty = 10000 
 \displaywidowpenalty = 10000
 
+\let\oldsection\section
+\renewcommand\section{\clearpage\oldsection}
+
 \lstset{basicstyle=\small, showstringspaces=false, tabsize=4,
 	numbers = left, stepnumber=5, 
 	language=C}
@@ -39,9 +42,8 @@
 ~\\~\vspace{3cm}
 \begin{center}
 \rule{\textwidth}{1.5pt}\vspace{8mm}
-{\Huge\bf The CMOO Development Manual}\vspace{4mm}
+{\Huge\bf CMOO Development Manual}\vspace{4mm}
 \rule{\textwidth}{1.5pt}\vspace{10mm}
-{\large Robert Lemmen}
 \end{center}
 \clearpage
 
@@ -51,7 +53,7 @@ DRAFT -- \today
 Please contact Robert Lemmen $<$robertle@semistable.com$>$ for questions or
 feedback.
 \vspace{\stretch{1}}\\
-Copyright \copyright~2008 -- 2015 Robert Lemmen $<$robertle@semistable.com$>$
+Copyright \copyright~2008 -- 2020 Robert Lemmen $<$robertle@semistable.com$>$
 
 This document is part of CMOO, and as such, this document is released under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
 
@@ -96,6 +98,8 @@ You should have received a copy of the GNU General Public License along with CMO
 
 \subsection{High-Level Modules}\label{sec:hl_design}
 
+% XXX is the picture still true though?
+
 \begin{figure}[htb]
 \centering
 \input{design_hl.pdf_tex}
@@ -103,6 +107,8 @@ You should have received a copy of the GNU General Public License along with CMO
 \end{figure}
 
 % XXX overview over the different modules
+
+% XXX a section on objects, slots, globals, virtual etc
 
 \section{Implementation Details}\label{sec:implementation_details}
 
@@ -112,7 +118,7 @@ You should have received a copy of the GNU General Public License along with CMO
 
 \subsection{Task Management}\label{sec:task_mgmt}
 
-\subsection{The Virtual Machine and Evaluator}\label{sec:virtual_machine}
+\subsection{The Virtual Machine}\label{sec:virtual_machine}
 
 \subsubsection{Types}\label{sec:types}
 
@@ -120,21 +126,23 @@ The language in CMOO is dynamically typed, in other words types are associated w
 
 % XXX descriptions of these
 \begin{description}
-\item[NIL]
-\item[BOOL]
-\item[INT]
-\item[FLOAT]
-\item[STRING]
-\item[OBJREF]
+\item[NIL] denotes an ``undefined'' value, which is also used internally to initialize values and stack cells.  
+\item[BOOL] values can only be ``true'' or ``false''. They are e.g. retured by comparison instructions, used by conditional jumps, and can be composed with logical operators.
+\item[INT] holds 32bit signed integer values for basic calculations.
+\item[FLOAT] are 32bit floating point numbers.
+\item[STRING] values are immutable octet strings up to 65535 long.  
+\item[OBJREF] is an opaque value that identifies an object within the system. These cannot be constructed from numbers, but only obtained through \verb|SELF|, \verb|PARENT| and \verb|MAKE_OBJ|. 
+\item[SPECIAL] are only used by the driver itself, they can be copied and passed to methods, but not interpreted by VM code. They contain things like references to low-level things like sockets.
 \end{description}
 
-Interally all of these are represented as a 64 bit cell that contains a type tag as well as the value in case of an immediate, or a pointer to teh actual object in the case of a non-immediate. Since all pointers have the lowest bits set to 0 anyway, these are used for type tagging.
+Interally all of these are represented as a 64 bit cell that contains a type tag as well as the value in case of an immediate, or a pointer to the actual object in the case of a non-immediate. Since all pointers have the lowest bits set to 0 anyway, these are used for type tagging.
 
-\subsubsection{Registers and Stack}\label{sec:stack}
+\subsubsection{The Stack, Registers and Calling Conventions}\label{sec:stack}
 
-The virtual machine is fairly simple: it has registers that hold the address of the current instruction (IP), a pointer to the top of the stack (SP), and a frame pointer (FP). Unlike a ``pure'' stack VM, elements on the stack can be addressed by position relative to FP, which makes it a little bit like a register based VM. A method can reserve space on the stack for this use, which we will call ``locals''. Note that a stack cell can contain values accessible by the code, but also VM-internal information like instruction addresses or frame pointers. These are always hidden from the code executed by the VM.
+The virtual machine is fairly simple: it has registers that hold the address of the current instruction (IP), a pointer to the top of the stack (SP), and a frame pointer (FP). Unlike a ``pure'' stack VM, elements on the stack can be addressed by position relative to FP, which makes it a little bit like a
+register based VM. A method can reserve space on the stack for this use, which we will call ``locals''. Arguments to a method are treated similarily, more on that below. Note that a stack cell can contain values accessible by the code, but also VM-internal information like instruction addresses or frame pointers. These are always hidden from the code executed by the VM.
 
-So in a method call with two arguments passed in, FP will point to the first argument, and SP to the last element on the stack, the second argument. In the visualisation below, the horizontal lines show the boundaries of the call frames on the stack:
+So in a method call with two arguments passed in, FP will point to the first argument, and SP to the last element on the stack, the second argument. In the visualisation below, the horizontal lines show the boundaries of the call frames on the stack (which in this visualization grows upwards):
 
 \begin{table}[H]
 \centering
@@ -173,7 +181,7 @@ argument 0 & $\leftarrow$ FP \\
 \end{tabular}
 \end{table}
 
-When calling another method, the caller has to pu the callee objref, the callee method name and all arguments on the stack. For example if we were to do that with \verb|PUSH|, the stack would look like this just before the call:
+When calling another method, the caller has to put the callee objref (more on objects later in the document, but every method lives on one of these), the callee method name and all arguments on the stack. For example if we were to do that with \verb|PUSH|, the stack would look like this just before the call:
 
 \begin{table}[H]
 \centering
@@ -208,59 +216,242 @@ argument 0 \\
 \end{tabular}
 \end{table}
 
-% XXX returning 
+When the called method later executes a \verb|RETURN| instruction, it can supply a single value as the return value from the stack relative to the FP active at that point. The rest of the stack, arguments, locals and intermediates will be cleaned up. The return address and previous FP stored by the \verb|CALL| are also not needed anymore and are cleaned up, and the return value is left in place of the previous FP, which is now restored as the current one. So from the view of the caller, the return value is now on top of the stack, just as if \verb|PUSH|ed:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{3cm}|p{3cm}}
+returned value & $\leftarrow$ SP \\
+intermediate 0 \\
+local 0    \\    
+argument 1 \\
+argument 0 & $\leftarrow$ FP \\ 
+\cline{1-1}
+\ldots & \\
+\end{tabular}
+\end{table}
 
 \subsubsection{Opcodes}\label{sec:opcodes}
 
-the VM machine code is a sequence of one-octet opcodes followed by a variable number and length of arguments. Typical types of the arguments are unsigned 8bit values that denote a local relative to FP, signed 4-byte integers that are used e.g. as relative addresses, and serializations of actual values.
+the VM machine code is a sequence of one-octet opcodes followed by a variable number and length of arguments. Typical types of the arguments are unsigned 8bit values that denote a local, argument or intermediate relative to FP (which is a bit like registers), signed 4-byte integers that are used e.g. as relative addresses for jumps, and serializations of actual values.
 
+% XXX explain reg8 and the like
+
+% XXX somehow it would be clearer if the literal opcode values here and in the code were in hex numbers...
+
+% XXX scale all tables in here so that the widest is \textwidth
+\begin{minipage}{\textwidth}
 \paragraph{NOOP}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|}
+\hline
+opcode8\newline\textbf{0} \\
+\hline
+\end{tabular}\vspace{1em}\\
+This instruction does nothing except waste one cycle of the interpreter loop, not particularily useful outside development and testing.
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{HALT}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|}
+\hline
+opcode8\newline\textbf{1} \\
+\hline
+\end{tabular}\vspace{1em}\\
+Will end the VM and return eecution to whatever executed that, without returning to outer call frames first. Only useful for VM unit tests.
+
+\textbf{Note:} This instruction should not be available in production builds of the driver for security reasons, user-supplied code should not be able to do this!
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{DEBUGI}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{8cm}|}
+\hline
+opcode8\newline\textbf{2} & int32\newline\textbf{message} \\
+\hline
+\end{tabular}\vspace{1em}\\
+Will send the supplied integer value \textbf{message} to a callback set on the interpreter, this is only useful for unit testing.
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{DEBUGR}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{8cm}|}
+\hline
+opcode8\newline\textbf{3} & reg8\newline\textbf{message} \\
+\hline
+\end{tabular}\vspace{1em}\\
+Will send the value in the register denoted by \textbf{message} to a callback
+set on the interpreter, this is only useful for unit testing.
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{MOV}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{PUSH}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{POP}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{CALL}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{RETURN}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{ARGS\_LOCALS}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{CLEAR}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{TRUE}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LOAD\_INT}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|p{8cm}|}
+\hline
+opcode8\newline\textbf{12} & reg8\newline\textbf{dest} & int32\newline\textbf{value} \\
+\hline
+\end{tabular}\vspace{1em}\\
+The stack element \textbf{dest} relative to FP will be cleared and overwritten with the deserialized int32 \textbf{value}. This is the recommended way to load literal integer values from code.
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LOAD\_FLOAT}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LOAD\_STRING}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{TYPE}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LOGICAL\_AND}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LOGICAL\_OR}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LOGICAL\_NOT}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{EQ}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LE}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LT}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{ADD}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{SUB}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{MUL}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{DIV}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{MOD}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{JUMP}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{JUMP\_IF}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{JUMP\_EQ}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{JUMP\_NE}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{JUMP\_LE}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{JUMP\_LT}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{SYSCALL}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LENGTH}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{CONCAT}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{GETGLOBAL}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{SETGLOBAL}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{MAKE\_OBJ}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{SELF}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{PARENT}
+\end{minipage}
+
+\vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{USLEEP}
+\end{minipage}
 
 \subsection{Locking}\label{sec:locking}
 
 \subsection{Caching}\label{sec:caching}
 
 \subsection{Persistence}\label{sec:persistence}
+
+\section{Driver Language and Compiler}\label{sec:compiler}
+
+\section{The Hobgoblins Benchmark}\label{sec:hobgoblins}
+
+% XXX note that this is a plan, not implemented yet
+% XXX describe what we want to do
 
 \end{document}

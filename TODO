@@ -26,4 +26,5 @@ yakshaving
 non-code
 --------
 - document vm evaluator and type system
+- LANGUAGE needs to move into the manual
 - more general documentation

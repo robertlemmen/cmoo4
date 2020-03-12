@@ -87,7 +87,7 @@
  * stack, and you may have shrunk your args_locals guarantees, it is therefore
  * recommended to use the last locals on your stack for this.
  *
- * Also note that in a method with not arguments and locals, FP is initially 
+ * Also note that in a method with no arguments and locals, FP is initially 
  * beyond SP!
  *
  * A full description of the instruction set is in the documentation, the 
