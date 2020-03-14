@@ -9,37 +9,33 @@
 \usepackage[linkcolor=blue, colorlinks=true]{hyperref}
 
 \pdfinfo {            
-	/Title(The CMOO Development Manual)
+	/Title(CMOO Development Manual)
 }
 
 \setlength{\hoffset}{0pt}
-\setlength{\voffset}{0pt}
-\setlength{\oddsidemargin}{0pt}
+\setlength{\voffset}{33pt}
+%\setlength{\oddsidemargin}{0pt}
 \setlength{\topmargin}{0pt}
 \setlength{\headheight}{0pt}
 \setlength{\headsep}{0pt}
 \setlength{\textheight}{\paperheight}
-\setlength{\parindent}{0cm}
-\setlength{\parskip}{.2cm}
-\setlength{\tabcolsep}{.2cm}
-\addtolength{\textheight}{-2in}
-\setlength{\textwidth}{\paperwidth}
-\addtolength{\textwidth}{-2in}
-\clubpenalty = 10000
-\widowpenalty = 10000 
-\displaywidowpenalty = 10000
+\addtolength{\textheight}{-214pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{9pt}
+\setlength{\footskip}{48pt}
 
 \let\oldsection\section
 \renewcommand\section{\clearpage\oldsection}
 
+% XXX what's this good for? and the listings package? let's leave it for now,
+% might come in handy when we talk about the compiler...
 \lstset{basicstyle=\small, showstringspaces=false, tabsize=4,
 	numbers = left, stepnumber=5, 
 	language=C}
 
 \begin{document}
-% title page
 \thispagestyle{empty}
-~\\~\vspace{3cm}
+~\\~\vspace{3.14cm}
 \begin{center}
 \rule{\textwidth}{1.5pt}\vspace{8mm}
 {\Huge\bf CMOO Development Manual}\vspace{4mm}
@@ -64,12 +60,12 @@ fitness for a particular purpose}.  See the GNU General Public License for more 
 You should have received a copy of the GNU General Public License along with CMOO. If not, see $<$http://www.gnu.org/licenses/$>$.
 \cleardoublepage
 
-% table of contents
 \tableofcontents
 \cleardoublepage
 
-% content start
 \section{Introduction}\label{sec:introduction}
+
+% XXX audience
 
 \subsection{MOOs}
 
@@ -122,7 +118,7 @@ You should have received a copy of the GNU General Public License along with CMO
 
 \subsubsection{Types}\label{sec:types}
 
-The language in CMOO is dynamically typed, in other words types are associated with values rather than with variables. So the same variable can contain a number at some point and a string a little bit later. The VM differentiates between immediate types, which can be represented in their entirety in a single stack cell, and non-immediates which require some heap storage. An example for an immediate would be a integer, a string would be a non-immediate. The follwing types are supported:
+The language of the CMOO driver is dynamically typed, in other words types are associated with values rather than with variables. So the same variable can contain a number at some point and a string a little bit later. The VM differentiates between immediate types, which can be represented in their entirety in a single stack cell, and non-immediates which require some heap storage. An example for an immediate would be a integer, a string would be a non-immediate. The follwing types are supported:
 
 % XXX descriptions of these
 \begin{description}
@@ -135,12 +131,14 @@ The language in CMOO is dynamically typed, in other words types are associated w
 \item[SPECIAL] are only used by the driver itself, they can be copied and passed to methods, but not interpreted by VM code. They contain things like references to low-level things like sockets.
 \end{description}
 
+% XXX say that we will have hashes and arrays later
+
 Interally all of these are represented as a 64 bit cell that contains a type tag as well as the value in case of an immediate, or a pointer to the actual object in the case of a non-immediate. Since all pointers have the lowest bits set to 0 anyway, these are used for type tagging.
 
 \subsubsection{The Stack, Registers and Calling Conventions}\label{sec:stack}
 
 The virtual machine is fairly simple: it has registers that hold the address of the current instruction (IP), a pointer to the top of the stack (SP), and a frame pointer (FP). Unlike a ``pure'' stack VM, elements on the stack can be addressed by position relative to FP, which makes it a little bit like a
-register based VM. A method can reserve space on the stack for this use, which we will call ``locals''. Arguments to a method are treated similarily, more on that below. Note that a stack cell can contain values accessible by the code, but also VM-internal information like instruction addresses or frame pointers. These are always hidden from the code executed by the VM.
+register based VM. A method can reserve space on the stack for this use, which we will call ``locals''. Arguments to a method are treated similarily, more on that below (see \verb|ARGS_LOCALS|). Note that a stack cell can contain values accessible by the code, but also VM-internal information like instruction addresses or frame pointers. These are always hidden from the code executed by the VM.
 
 So in a method call with two arguments passed in, FP will point to the first argument, and SP to the last element on the stack, the second argument. In the visualisation below, the horizontal lines show the boundaries of the call frames on the stack (which in this visualization grows upwards):
 
@@ -231,20 +229,20 @@ argument 0 & $\leftarrow$ FP \\
 \end{tabular}
 \end{table}
 
-\subsubsection{Opcodes}\label{sec:opcodes}
+\subsubsection{Instruction Set}\label{sec:instructionset}
 
 the VM machine code is a sequence of one-octet opcodes followed by a variable number and length of arguments. Typical types of the arguments are unsigned 8bit values that denote a local, argument or intermediate relative to FP (which is a bit like registers), signed 4-byte integers that are used e.g. as relative addresses for jumps, and serializations of actual values.
 
 % XXX explain reg8 and the like
 
-% XXX somehow it would be clearer if the literal opcode values here and in the code were in hex numbers...
-
+\bigskip
 % XXX scale all tables in here so that the widest is \textwidth
+% XXX 2em between instructions seems too much, \parskip seems too little...
 \begin{minipage}{\textwidth}
 \paragraph{NOOP}
 ~\vspace{1em}\\\begin{tabular}{|p{2cm}|}
 \hline
-opcode8\newline\textbf{0} \\
+opcode8\newline\textbf{0x00} \\
 \hline
 \end{tabular}\vspace{1em}\\
 This instruction does nothing except waste one cycle of the interpreter loop, not particularily useful outside development and testing.
@@ -254,19 +252,18 @@ This instruction does nothing except waste one cycle of the interpreter loop, no
 \paragraph{HALT}
 ~\vspace{1em}\\\begin{tabular}{|p{2cm}|}
 \hline
-opcode8\newline\textbf{1} \\
+opcode8\newline\textbf{0x01} \\
 \hline
 \end{tabular}\vspace{1em}\\
-Will end the VM and return eecution to whatever executed that, without returning to outer call frames first. Only useful for VM unit tests.
-
-\textbf{Note:} This instruction should not be available in production builds of the driver for security reasons, user-supplied code should not be able to do this!
+Will end the VM and return execution to whatever ran it that, without returning to outer call frames first. Only useful for VM unit tests.
+\\\\\textbf{Note:} This instruction should not be available in production builds of the driver for security reasons, user-supplied code should not be able to do this!
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{DEBUGI}
 ~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{8cm}|}
 \hline
-opcode8\newline\textbf{2} & int32\newline\textbf{message} \\
+opcode8\newline\textbf{0x02} & int32\newline\textbf{message} \\
 \hline
 \end{tabular}\vspace{1em}\\
 Will send the supplied integer value \textbf{message} to a callback set on the interpreter, this is only useful for unit testing.
@@ -274,9 +271,9 @@ Will send the supplied integer value \textbf{message} to a callback set on the i
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{DEBUGR}
-~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{8cm}|}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|}
 \hline
-opcode8\newline\textbf{3} & reg8\newline\textbf{message} \\
+opcode8\newline\textbf{0x03} & reg8\newline\textbf{message} \\
 \hline
 \end{tabular}\vspace{1em}\\
 Will send the value in the register denoted by \textbf{message} to a callback
@@ -285,22 +282,51 @@ set on the interpreter, this is only useful for unit testing.
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{MOV}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|p{2cm}|}
+\hline
+opcode8\newline\textbf{0x04} & reg8\newline\textbf{dest} & reg8\newline\textbf{source}\\
+\hline
+\end{tabular}\vspace{1em}\\
+This instruction will copy, and thereby duplicate, the contents of register \textbf{source} into register \textbf{dest}.
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{PUSH}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|}
+\hline
+opcode8\newline\textbf{0x05} & reg8\newline\textbf{source} \\
+\hline
+\end{tabular}\vspace{1em}\\
+Will increment the stack pointer by one and then copy the contents of register \textbf{source} to the new top stack cell.
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{POP}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|}
+\hline
+opcode8\newline\textbf{0x06} & reg8\newline\textbf{dest} \\
+\hline
+\end{tabular}\vspace{1em}\\
+Will copy the top stack cell contents into the register \textbf{dest} and the reduce the stack by one.
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{CALL}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|}
+\hline
+opcode8\newline\textbf{0x07} & reg8\newline\textbf{nargs} \\
+\hline
+\end{tabular}\vspace{1em}\\
+Will call into a method on another object with \textbf{nargs}. Note that you need to set up these arguments and what to call first, see section \ref{sec:stack} above for an illustration. The recommended method is to push an objref  to the object as well as a string with the method name, and then all arguments. After that you can issue the \verb|CALL| instruction. After it has  returned, you should \verb|POP| the return value. If you are not particularily interested in it, this still makes sense to keep the stack in a predictable state.
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{RETURN}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|}
+\hline
+opcode8\newline\textbf{0x08} & reg8\newline\textbf{retval} \\
+\hline
+\end{tabular}\vspace{1em}\\
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
@@ -319,7 +345,7 @@ set on the interpreter, this is only useful for unit testing.
 \paragraph{LOAD\_INT}
 ~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|p{8cm}|}
 \hline
-opcode8\newline\textbf{12} & reg8\newline\textbf{dest} & int32\newline\textbf{value} \\
+opcode8\newline\textbf{0x0C} & reg8\newline\textbf{dest} & int32\newline\textbf{value} \\
 \hline
 \end{tabular}\vspace{1em}\\
 The stack element \textbf{dest} relative to FP will be cleared and overwritten with the deserialized int32 \textbf{value}. This is the recommended way to load literal integer values from code.
