@@ -1,7 +1,10 @@
+GIT_VERSION := $(shell git log -1 --pretty=format:'g%h -- %ci')
+GIT_DIRTY := $(shell git describe --all --long --dirty | grep -q dirty && echo ' (locally modified)' || true)
+
 development.pdf: development.tex design_hl.pdf
 	@echo "Typesetting $@..."
-	@pdflatex -interaction=batchmode development.tex
-	@pdflatex -interaction=batchmode development.tex
+	@pdflatex -interaction=batchmode "\def\gitversion{$(GIT_VERSION)$(GIT_DIRTY)}\input{development}"
+	@pdflatex -interaction=batchmode "\def\gitversion{$(GIT_VERSION)$(GIT_DIRTY)}\input{development}"
 
 %.pdf : %.svg
 	echo "Converting $@..."
