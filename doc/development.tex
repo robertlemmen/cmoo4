@@ -126,18 +126,21 @@ The language of the CMOO driver is dynamically typed, in other words types are a
 
 % XXX descriptions of these
 \begin{description}
-\item[NIL] denotes an ``undefined'' value, which is also used internally to initialise values and stack cells.  
-\item[BOOL] values can only be ``true'' or ``false''. They are e.g. returned by comparison instructions, used by conditional jumps, and can be composed with logical operators.
-\item[INT] holds 32bit signed integer values for basic calculations.
-\item[FLOAT] are 32bit floating point numbers.
-\item[STRING] values are immutable octet strings up to 65535 long.  
-\item[OBJREF] is an opaque value that identifies an object within the system. These cannot be constructed from numbers, but only obtained through \verb|SELF|, \verb|PARENT| and \verb|MAKE_OBJ|. 
-\item[SPECIAL] are only used by the driver itself, they can be copied and passed to methods, but not interpreted by VM code. They contain things like references to low-level things like sockets.
+\item[NIL (0)] denotes an ``undefined'' value, which is also used internally to initialise values and stack cells.  
+\item[BOOL (1)] values can only be ``true'' or ``false''. They are e.g. returned by comparison instructions, used by conditional jumps, and can be composed with logical operators.
+\item[INT (2)] holds 32bit signed integer values for basic calculations.
+\item[FLOAT (3)] are 32bit floating point numbers.
+\item[STRING (4)] values are immutable octet strings up to 65535 long.  
+\item[OBJREF (5)] is an opaque value that identifies an object within the system. These cannot be constructed from numbers, but only obtained through \verb|SELF|, \verb|PARENT| and \verb|MAKE_OBJ|. 
+\item[SPECIAL (6)] are only used by the driver itself, they can be copied and passed to methods, but not interpreted by VM code. They contain things like references to low-level things like sockets.
 \end{description}
 
 % XXX say that we will have hashes and arrays later
 
 Internally all of these are represented as a 64 bit cell that contains a type tag as well as the value in case of an immediate, or a pointer to the actual object in the case of a non-immediate. Since all pointers have the lowest bits set to 0 anyway, these are used for type tagging.
+
+The number in behind each type above is the internal representation, also used
+by the \verb|TYPE| opcode when introspecting values.
 
 \subsubsection{The Stack, Registers and Calling Conventions}\label{sec:stack}
 
@@ -331,6 +334,11 @@ Will call into a method on another object with \textbf{nargs}. Note that you nee
 opcode8\newline\textbf{0x08} & reg8\newline\textbf{retval} \\
 \hline
 \end{tabular}\vspace{1em}\\
+The current call frame will be cleaned up, so the FP will be restored to the
+position it prior to the previous \verb|CALL|. A single register \textbf{retval}
+needs to be supplied, whose contents will be copied to the top of the stack, so
+they can e.g. be \verb|POP|ed to use them. See section \ref{sec:stack} for an
+example how calling and returning works in practice.
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
@@ -339,10 +347,25 @@ opcode8\newline\textbf{0x08} & reg8\newline\textbf{retval} \\
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{CLEAR}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|}
+\hline
+opcode8\newline\textbf{0x0A} & reg8\newline\textbf{dest} \\
+\hline
+\end{tabular}\vspace{1em}\\
+Clears the register \textbf{dest} and sets it to the NIL value (or actually
+type).
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{TRUE}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|}
+\hline
+opcode8\newline\textbf{0x0B} & reg8\newline\textbf{dest} \\
+\hline
+\end{tabular}\vspace{1em}\\
+Clears the register \textbf{dest} and sets it to the TRUE value. Note that there
+is no equivalent call to set a FALSE value, but \verb|LOGICAL_NOT| or a similar
+mechanism can be used to derive one.
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
@@ -357,26 +380,77 @@ The stack element \textbf{dest} relative to FP will be cleared and overwritten w
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LOAD\_FLOAT}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|p{8cm}|}
+\hline
+opcode8\newline\textbf{0x0D} & reg8\newline\textbf{dest} & float32\newline\textbf{value} \\
+\hline
+\end{tabular}\vspace{1em}\\
+The stack element \textbf{dest} relative to FP will be cleared and overwritten
+with the deserialised float32 \textbf{value}. This is the recommended way to
+load literal floating point values from code.
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LOAD\_STRING}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|p{4cm}|p{3cm}|}
+\cline{1-3}\cdashline{4-4}
+opcode8\newline\textbf{0x0E} & reg8\newline\textbf{dest} & int16\newline\textbf{length} & string\newline\textbf{value} \\
+\cline{1-3}\cdashline{4-4}
+\end{tabular}\vspace{1em}\\
+The stack element \textbf{dest} relative to FP will be cleared and overwritten
+with the \textbf{value}, whose \textbf{length} is part of the
+serialisation.  This is the recommended way to
+load literal strings from code.
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{TYPE}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|p{2cm}|}
+\hline
+opcode8\newline\textbf{0x0F} & reg8\newline\textbf{dest} & reg8\newline\textbf{source} \\
+\hline
+\end{tabular}\vspace{1em}\\
+Determines the type of the value in register \textbf{source}, and stores an integer
+denoting the type in \textbf{dest}. The mapping of types to integer values is
+the internally used one, see section \ref{sec:types} for a description of types
+and these internal representations. 
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LOGICAL\_AND}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|p{2cm}|p{2cm}|}
+\hline
+opcode8\newline\textbf{0x10} & reg8\newline\textbf{dest} &
+reg8\newline\textbf{src1} & reg8\newline\textbf{src1} \\
+\hline
+\end{tabular}\vspace{1em}\\
+Performs a logical AND operation between the two BOOL values in \textbf{src1}
+and \textbf{src2} and stores the resulting BOOL in \textbf{dest}. If any of the
+source values is not of type BOOL an error is raised.
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LOGICAL\_OR}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|p{2cm}|p{2cm}|}
+\hline
+opcode8\newline\textbf{0x11} & reg8\newline\textbf{dest} &
+reg8\newline\textbf{src1} & reg8\newline\textbf{src1} \\
+\hline
+\end{tabular}\vspace{1em}\\
+Performs a logical OR operation between the two BOOL values in \textbf{src1}
+and \textbf{src2} and stores the resulting BOOL in \textbf{dest}. If any of the
+source values is not of type BOOL an error is raised.
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
 \paragraph{LOGICAL\_NOT}
+~\vspace{1em}\\\begin{tabular}{|p{2cm}|p{2cm}|p{2cm}|}
+\hline
+opcode8\newline\textbf{0x12} & reg8\newline\textbf{dest} & reg8\newline\textbf{source} \\
+\hline
+\end{tabular}\vspace{1em}\\
+Performs a logical negation of the value in \textbf{source} and stores the
+resulting BOOL in \textbf{dest}. If the source value is not of type BOOL an error is raised.
 \end{minipage}
 
 \vspace{2em}\begin{minipage}{\textwidth}
