@@ -134,18 +134,18 @@
 // XXX need to be reordered
 #define OP_SYSCALL        0x21 // reg8:ret <= reg8:nargs, args consumed from stack
 #define OP_LENGTH         0x22 // reg8:dst <= strlen(reg8:src)
-#define OP_CONCAT         0x22 // reg8:dst <= concat(reg8:src1, reg8:src2)
+#define OP_CONCAT         0x23 // reg8:dst <= concat(reg8:src1, reg8:src2)
 
-#define OP_GETGLOBAL      0x23 // reg8:ret <= reg8:name
-#define OP_SETGLOBAL      0x24 // reg8:name, reg8:val
-#define OP_MAKE_OBJ       0x25 // reg8:new_ref <= reg:parent_ref
-#define OP_SELF           0x26 // reg8:id <= ID of current object
+#define OP_GETGLOBAL      0x24 // reg8:ret <= reg8:name
+#define OP_SETGLOBAL      0x25 // reg8:name, reg8:val
+#define OP_MAKE_OBJ       0x26 // reg8:new_ref <= reg:parent_ref
+#define OP_SELF           0x27 // reg8:id <= ID of current object
 // XXX this is a stopgap, we could have multiple parents. but until we have
 // lists...
-#define OP_PARENT         0x26 // reg8:id <= ID of first parent or NIL if no parent
+#define OP_PARENT         0x28 // reg8:id <= ID of first parent or NIL if no parent
 // XXX this is a temporary/debug aid to expose concurrency issues, this opcode
 // should not be used in actual code
-#define OP_USLEEP         0x27 // int32:microseconds to sleep
+#define OP_USLEEP         0x29 // int32:microseconds to sleep
 
 // XXX more ops
 
