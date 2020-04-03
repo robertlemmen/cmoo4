@@ -67,7 +67,7 @@ void store_finish_tx(struct store_tx *tx) {
     while (tx->locked) {
         struct lobject_list_node *temp = tx->locked;
         tx->locked = temp->next;
-        printf("### unlocking %li\n", obj_get_id(lobject_get_object(temp->lo)));
+        printf("### tx %lX unlocking obj %li\n", tx, obj_get_id(lobject_get_object(temp->lo)));
         lock_unlock(lobject_get_lock(temp->lo), tx);
         cache_release_object(s->cache, temp->lo);
         free(temp);
@@ -96,7 +96,7 @@ struct lobject* store_get_object(struct store_tx *tx, object_id oid) {
 
     pthread_mutex_unlock(&s->cache_latch);
 
-    printf("### locking %li SHARED\n", obj_get_id(lobject_get_object(lo)));
+    printf("### tx %lX locking obj %li SHARED\n", tx, obj_get_id(lobject_get_object(lo)));
     if (lock_lock(lobject_get_lock(lo), LOCK_SHARED, tx)) {
         return NULL;
     }
@@ -122,7 +122,7 @@ struct lobject* store_make_object(struct store_tx *tx, object_id parent_id) {
     lobject_set_object(lo, obj);
     lobject_set_lock(lo, l);
     cache_put_object(s->cache, lo);
-    printf("### locking %li EXCLUSIVE\n", obj_get_id(lobject_get_object(lo)));
+    printf("### tx %lX locking %li EXCLUSIVE\n", tx, obj_get_id(lobject_get_object(lo)));
     lock_lock(lobject_get_lock(lo), LOCK_EXCLUSIVE, tx);
     pthread_mutex_unlock(&s->cache_latch);
     printf("##   -> %li\n", obj_get_id(obj));

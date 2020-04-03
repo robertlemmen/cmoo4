@@ -274,8 +274,11 @@ void* tasks_thread_func(void *arg) {
                 ntx_commit_tx(net_tx);
             }
             else {
+                printf("!!!! rolling back network transaction\n");
                 ntx_rollback_tx(net_tx);
             }
+
+            ntx_free_tx(net_tx);
         }
         // clean up current queue item
         if (current_item->type == QUEUE_TYPE_READ) {

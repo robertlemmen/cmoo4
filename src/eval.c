@@ -945,9 +945,9 @@ int eval_exec(struct eval_ctx *ctx, opcode *code) {
             uint8_t rval = *((uint8_t*)ip);
             ip += 1;
             printf("| SETGLOBAL r0x%02X r0x%02X            |\n", name, rval);
-            printf("### locking %li EXCLUSIVE\n", obj_get_id(lobject_get_object(ctx->obj)));
+            printf("### tx %lX locking obj %li EXCLUSIVE\n", ctx->stx,  obj_get_id(lobject_get_object(ctx->obj)));
             if (lock_lock(lobject_get_lock(ctx->obj), LOCK_EXCLUSIVE, ctx->stx)) {
-                printf("!!!! lock failed\n");
+                printf("!!!! lock failed, needs transaction rollback and retry\n");
                 return EVAL_RETRY_TX;
             }
             obj_set_global(lobject_get_object(ctx->obj), val_get_string_data(ctx->fp[name].val), ctx->fp[rval].val);
