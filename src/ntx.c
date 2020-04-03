@@ -43,10 +43,12 @@ struct ntx_tx* ntx_new_tx(struct ntx_ctx *ctx) {
     ret->ctx = ctx;
     ret->first = NULL;
     ret->last = NULL;
+    printf("# ntx_new_tx -> %lX\n", ret);
     return ret;
 }
 
 void ntx_commit_tx(struct ntx_tx *tx) {
+    printf("# ntx_commit_tx(%lX)\n", tx);
     struct net_tx_op *cop = tx->first;
     while (cop) {
         switch (cop->op_type) {
@@ -67,6 +69,7 @@ void ntx_commit_tx(struct ntx_tx *tx) {
 }
 
 void ntx_rollback_tx(struct ntx_tx *tx) {
+    printf("# ntx_rollback_tx(%lX)\n", tx);
     struct net_tx_op *cop = tx->first;
     while (cop) {
         switch (cop->op_type) {

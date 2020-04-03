@@ -11,7 +11,7 @@
 
 // -------- internal structures --------
 
-// XXX set to 1 for now, needs to be configurable later
+// XXX set to fixed value now, needs to auto-tune and be configurable later
 #define THREAD_COUNT            2
 
 #define QUEUE_TYPE_STOP         0
@@ -145,7 +145,7 @@ void tasks_listen_error_cb(int errnum, void *cb_data1, void *cb_data2) {
 void* tasks_thread_func(void *arg) {
     struct tasks_ctx *ctx = (struct tasks_ctx*)arg;
 
-    printf("tasks worker thread running...\n");
+    printf("# tasks worker thread running...\n");
 
     while (!ctx->stop_flag) {
         pthread_mutex_lock(&ctx->queue_latch);
@@ -175,6 +175,10 @@ void* tasks_thread_func(void *arg) {
         int eval_ret = EVAL_RETRY_TX;
         int queue_latch_held = 1;
 
+        // create network transaction
+        struct ntx_tx *net_tx = ntx_new_tx(ctx->ntx);
+
+        // XXX later we might have unrecoverable errors
         while (eval_ret != EVAL_OK) {
             // do first step of processing that requires lock to be held
             switch (current_item->type) {
@@ -196,8 +200,9 @@ void* tasks_thread_func(void *arg) {
                 case QUEUE_TYPE_CLOSED:
                     vm_eval_ctx = vm_get_eval_ctx(ctx->vm, current_item->closed_data.oid, task_id);
                     break;
-                default:
-                    printf("sdfggd\n");
+                default:;
+                    // XXX generally, what do we do with these
+                    // should-never-happen?
             }
             // we want to wait until here to release the queue lock, so that two
             // messages from the same socket can't be processed by two threads
@@ -209,13 +214,7 @@ void* tasks_thread_func(void *arg) {
                 pthread_mutex_unlock(&ctx->queue_latch);
             }
 
-            // create network transaction
-            struct ntx_tx *net_tx = ntx_new_tx(ctx->ntx);
-
             // second step of processing the item, without global lock
-            printf("### tasks processing an item on thread 0x%016lX\n", pthread_self());
-            // XXX this one we need to do in a loop until it succeeded or failed, 
-            // but EVAL_RETRY_TX should just undo the network output and retry
             val slot;
             switch (current_item->type) {
                 case QUEUE_TYPE_INIT:
@@ -262,9 +261,9 @@ void* tasks_thread_func(void *arg) {
                     val_dec_ref(slot);
                     break;
                 default:
+                    // XXX see above, need to fail much harder a nd better
                     printf("sdfdsffsd\n");
             }
-            printf("## done processing an item on thread 0x%016lX --> %i\n", pthread_self(), eval_ret);
             if (vm_eval_ctx) {
                 vm_free_eval_ctx(vm_eval_ctx);
             }
@@ -274,12 +273,12 @@ void* tasks_thread_func(void *arg) {
                 ntx_commit_tx(net_tx);
             }
             else {
-                printf("!!!! rolling back network transaction\n");
                 ntx_rollback_tx(net_tx);
             }
-
-            ntx_free_tx(net_tx);
         }
+
+        ntx_free_tx(net_tx);
+
         // clean up current queue item
         if (current_item->type == QUEUE_TYPE_READ) {
             free(current_item->read_data.buf);
