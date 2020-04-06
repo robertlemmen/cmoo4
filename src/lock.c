@@ -222,6 +222,9 @@ void lock_unlock(struct lock *l, struct store_tx *tx) {
                 && (l->first_wait_group->entries[0] == l->first_wait_group->next->entries[0]) ) {
             struct lock_waitgroup *old = l->first_wait_group;
             l->first_wait_group = old->next;
+            if (!l->first_wait_group) {
+                l->last_wait_group = NULL;
+            }
             lock_waitgroup_free(old);
             pthread_cond_broadcast(&l->first_wait_group->sema);
         }

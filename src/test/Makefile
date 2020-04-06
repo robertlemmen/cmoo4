@@ -1,5 +1,5 @@
 WARN=-Wall -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes 
-CFLAGS=-g $(WARN) -std=c11
+CFLAGS=-g $(WARN) -std=c11 -pthread
 CINCFLAGS=$(shell pkg-config --cflags check) -I..
 LDFLAGS=$(shell pkg-config --libs check)
 CC=gcc
