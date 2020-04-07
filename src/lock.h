@@ -14,20 +14,24 @@
 #define LOCK_SHARED       0
 #define LOCK_EXCLUSIVE    1
 
-/* XXX we will need some sort of locking_ctx for the deadlock detector */
+/* locks are not independent from each other due to the deadlock detector, so
+ * they need to be constructed over a central locking support structure */
+struct locks_ctx;
 
 struct lock;
 struct store_tx;
 
-struct lock* lock_new(void);
+struct locks_ctx* locks_new_ctx(int max_tasks);
+void locks_free_ctx(struct locks_ctx *ctx);
+
+struct lock* lock_new(struct locks_ctx *ctx);
 void lock_free(struct lock *l);
 
+// XXX this comment wont be true much longer, we will need  to look into the TX
+// for deadlock detection...
 /* these two take a opaque tx argument that is used to identify the transaction
  * that wants the lock, this module never looks into it and treats it as a
  * void pointer. */
-// XXX a small and reused tx integer would make things so much easier, would
-// also mean we need an upper bound on the number of concurrent TXes, which we
-// kinda have anyway, just needs setting up...
 int lock_lock(struct lock *l, int lock_mode, struct store_tx *tx);
 void lock_unlock(struct lock *l, struct store_tx *tx);
 

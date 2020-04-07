@@ -18,6 +18,7 @@ struct store {
     // with the object itself
     pthread_mutex_t cache_latch;
     // XXX kludge, need better allocator with persistence integration
+    struct locks_ctx *locks_ctx;
     int alloc_id;
 };
 
@@ -33,7 +34,7 @@ struct store_tx {
 
 // -------- implementation of public functions --------
 
-struct store* store_new(struct persist *p) {
+struct store* store_new(struct persist *p, int max_tasks) {
     struct store *ret = malloc(sizeof(struct store));
     ret->persist = p;
     // XXX should we get cache from args like persist?
@@ -42,12 +43,14 @@ struct store* store_new(struct persist *p) {
         fprintf(stderr, "pthread_mutex_init failed\n");
         exit(1);
     }
+    ret->locks_ctx = locks_new_ctx(max_tasks);
     ret->alloc_id = 1000;
     return ret;
 }
 
 void store_free(struct store *s) {
     cache_free(s->cache);
+    locks_free_ctx(s->locks_ctx);
     pthread_mutex_destroy(&s->cache_latch);
     free(s);
 }
@@ -87,7 +90,7 @@ struct lobject* store_get_object(struct store_tx *tx, object_id oid) {
         struct object *po = persist_get(s->persist, oid);
         // XXX not sure what to do in this case...
         assert(po != NULL);
-        struct lock *l = lock_new();
+        struct lock *l = lock_new(s->locks_ctx);
         lo = lobject_new();
         lobject_set_object(lo, po);
         lobject_set_lock(lo, l);
@@ -117,7 +120,7 @@ struct lobject* store_make_object(struct store_tx *tx, object_id parent_id) {
     struct object *obj = obj_new();
     obj_set_id(obj, s->alloc_id++);
     obj_add_parent(obj, parent_id);
-    struct lock *l = lock_new();
+    struct lock *l = lock_new(s->locks_ctx);
     struct lobject *lo = lobject_new();
     lobject_set_object(lo, obj);
     lobject_set_lock(lo, l);

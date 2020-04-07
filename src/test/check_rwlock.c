@@ -210,7 +210,8 @@ char tfunc01(int t, int p, void *arg) {
 START_TEST(test_rwlock_01) {
     printf("  test_rwlock_01...\n");
 
-    struct lock *l = lock_new();
+    struct locks_ctx *locks = locks_new_ctx(2);
+    struct lock *l = lock_new(locks);
     struct scaff_ctx *scaff = scaff_new_ctx(2, 4, &tfunc01, l);
     
     scaff_run(scaff);
@@ -246,7 +247,8 @@ char tfunc02(int t, int p, void *arg) {
 START_TEST(test_rwlock_02) {
     printf("  test_rwlock_02...\n");
 
-    struct lock *l = lock_new();
+    struct locks_ctx *locks = locks_new_ctx(1);
+    struct lock *l = lock_new(locks);
     struct scaff_ctx *scaff = scaff_new_ctx(1, 5, &tfunc02, l);
     
     scaff_run(scaff);
@@ -290,7 +292,8 @@ char tfunc03(int t, int p, void *arg) {
 START_TEST(test_rwlock_03) {
     printf("  test_rwlock_03...\n");
 
-    struct lock *l = lock_new();
+    struct locks_ctx *locks = locks_new_ctx(2);
+    struct lock *l = lock_new(locks);
     struct scaff_ctx *scaff = scaff_new_ctx(2, 4, &tfunc03, l);
     
     scaff_run(scaff);
@@ -338,7 +341,8 @@ char tfunc04(int t, int p, void *arg) {
 START_TEST(test_rwlock_04) {
     printf("  test_rwlock_04...\n");
 
-    struct lock *l = lock_new();
+    struct locks_ctx *locks = locks_new_ctx(2);
+    struct lock *l = lock_new(locks);
     struct scaff_ctx *scaff = scaff_new_ctx(2, 6, &tfunc04, l);
     
     scaff_run(scaff);
@@ -392,7 +396,8 @@ char tfunc05(int t, int p, void *arg) {
 START_TEST(test_rwlock_05) {
     printf("  test_rwlock_05...\n");
 
-    struct lock *l = lock_new();
+    struct locks_ctx *locks = locks_new_ctx(3);
+    struct lock *l = lock_new(locks);
     struct scaff_ctx *scaff = scaff_new_ctx(3, 5, &tfunc05, l);
     
     scaff_run(scaff);

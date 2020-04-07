@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
     printf("-=[ CMOO ]=-\n");
 
     struct persist *persist = persist_new();
-    struct store *store = store_new(persist);
+    struct store *store = store_new(persist, TASK_CONCURRENCY);
     vm = vm_new(store);
     struct net_ctx *net = net_new_ctx(net_init_cb);
     net_start(net);

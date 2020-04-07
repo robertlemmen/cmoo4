@@ -18,7 +18,12 @@ struct lock_waitgroup {
 
 // -------- implementation of declared public structures --------
 
+struct locks_ctx {
+    int max_tasks;
+};
+
 struct lock {
+    struct locks_ctx *ctx;
     pthread_mutex_t latch;
     // the first wait group is who is currently holding the lock, the chain
     // from there are the ones waiting
@@ -50,12 +55,23 @@ void lock_waitgroup_free(struct lock_waitgroup *wg) {
 
 // -------- implementation of public functions --------
 
-struct lock* lock_new(void) {
+struct locks_ctx* locks_new_ctx(int max_tasks) {
+    struct locks_ctx *ret = malloc(sizeof(struct locks_ctx));
+    ret->max_tasks = max_tasks;
+    return ret;
+}
+
+void locks_free_ctx(struct locks_ctx *ctx) {
+    free(ctx);
+}
+
+struct lock* lock_new(struct locks_ctx *ctx) {
     struct lock *ret = malloc(sizeof(struct lock));
     if (pthread_mutex_init(&ret->latch, NULL) != 0) {
         fprintf(stderr, "pthread_mutex_init failed\n");
         exit(1);
     }
+    ret->ctx = ctx;
     ret->first_wait_group = NULL;
     ret->last_wait_group = NULL;
     return ret;

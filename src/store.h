@@ -15,7 +15,7 @@
 struct store;
 struct store_tx;
 
-struct store* store_new(struct persist *p);
+struct store* store_new(struct persist *p, int max_tasks);
 void store_free(struct store *s);
 
 /* start/finish a transaction, you need to explicitely finish a transaction even 
