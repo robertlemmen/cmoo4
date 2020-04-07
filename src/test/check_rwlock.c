@@ -8,7 +8,7 @@
 
 #include "lock.h"
 
-#define PHASE_SLEEP_NS  50000000
+#define PHASE_SLEEP_NS  10000000
 
 /* this whole scaff thing is a test fixture/framework to make it easier running
  * multiple threads and exercising the rwlock implementation. the basic idea is
@@ -305,6 +305,109 @@ START_TEST(test_rwlock_03) {
 }
 END_TEST
 
+/* two independent lock sequences after another */
+char tfunc04(int t, int p, void *arg) {
+    struct lock *l = arg;
+    if (t == 0) {
+        if (p == 0) {
+            return map_lock_ret(lock_lock(l, LOCK_SHARED, (void*)(long)t));
+        }
+        else if (p == 1) {
+            return map_lock_ret(lock_lock(l, LOCK_EXCLUSIVE, (void*)(long)t));
+        }
+        else if (p == 2) {
+            lock_unlock(l, (void*)(long)t);
+            return 'U';
+        }
+    }
+    else if (t == 1) {
+        if (p == 3) {
+            return map_lock_ret(lock_lock(l, LOCK_SHARED, (void*)(long)t));
+        }
+        else if (p == 4) {
+            return map_lock_ret(lock_lock(l, LOCK_EXCLUSIVE, (void*)(long)t));
+        }
+        else if (p == 5) {
+            lock_unlock(l, (void*)(long)t);
+            return 'U';
+        }
+    }
+    return '.';
+}
+
+START_TEST(test_rwlock_04) {
+    printf("  test_rwlock_04...\n");
+
+    struct lock *l = lock_new();
+    struct scaff_ctx *scaff = scaff_new_ctx(2, 6, &tfunc04, l);
+    
+    scaff_run(scaff);
+    scaff_print_results(scaff);
+
+    ck_scaff_assert(scaff, 
+        "TTU..."
+        "...TTU");
+
+    lock_free(l);
+    scaff_free_ctx(scaff);
+}
+END_TEST
+
+/* three threads that initially share the lock */
+char tfunc05(int t, int p, void *arg) {
+    struct lock *l = arg;
+    if (t == 0) {
+        if (p == 0) {
+            return map_lock_ret(lock_lock(l, LOCK_SHARED, (void*)(long)t));
+        }
+        else if (p == 3) {
+            lock_unlock(l, (void*)(long)t);
+            return 'U';
+        }
+    }
+    else if (t == 1) {
+        if (p == 0) {
+            return map_lock_ret(lock_lock(l, LOCK_SHARED, (void*)(long)t));
+        }
+        else if (p == 1) {
+            return map_lock_ret(lock_lock(l, LOCK_EXCLUSIVE, (void*)(long)t));
+        }
+        else if (p == 4) {
+            lock_unlock(l, (void*)(long)t);
+            return 'U';
+        }
+    }
+    else if (t == 2) {
+        if (p == 0) {
+            return map_lock_ret(lock_lock(l, LOCK_SHARED, (void*)(long)t));
+        }
+        else if (p == 2) {
+            lock_unlock(l, (void*)(long)t);
+            return 'U';
+        }
+    }
+    return '.';
+}
+
+START_TEST(test_rwlock_05) {
+    printf("  test_rwlock_05...\n");
+
+    struct lock *l = lock_new();
+    struct scaff_ctx *scaff = scaff_new_ctx(3, 5, &tfunc05, l);
+    
+    scaff_run(scaff);
+    scaff_print_results(scaff);
+
+    ck_scaff_assert(scaff, 
+        "T..U."
+        "T--TU"
+        "T.U..");
+
+    lock_free(l);
+    scaff_free_ctx(scaff);
+}
+END_TEST
+
 TCase* make_rwlock_checks(void) {
     TCase *tc_rwlock;
 
@@ -312,6 +415,8 @@ TCase* make_rwlock_checks(void) {
     tcase_add_test(tc_rwlock, test_rwlock_01);
     tcase_add_test(tc_rwlock, test_rwlock_02);
     tcase_add_test(tc_rwlock, test_rwlock_03);
+    tcase_add_test(tc_rwlock, test_rwlock_04);
+    tcase_add_test(tc_rwlock, test_rwlock_05);
 
     return tc_rwlock;
 }

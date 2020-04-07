@@ -3,7 +3,6 @@ C M O O   T O D O
 
 next main jobs
 --------------
-- test cases and fixes for single-item rwlock cases
 - test cases and implementation for multi-rwlock deadlock
 - exploratory test case for multi=object deadlock
 - cleanups and valgrind work

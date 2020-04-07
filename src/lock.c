@@ -95,7 +95,7 @@ int lock_lock(struct lock *l, int lock_mode, struct store_tx *tx) {
     }
 
     // case C: if there is a waitgroup, and the last one is read-only, and this tx wants read-only,
-    // just join and wait
+    // just join the group and return
     if ((lock_mode == LOCK_SHARED) && (l->last_wait_group->mode == LOCK_SHARED)) {
         struct lock_waitgroup *lwg = l->last_wait_group;
         lwg->entry_count++;
@@ -132,7 +132,6 @@ int lock_lock(struct lock *l, int lock_mode, struct store_tx *tx) {
                     // otherwise it would have been added to the current first
                     // wait group. therefore...
                     pthread_mutex_unlock(&l->latch);
-                    printf("!!!! stale lock\n");
                     return LOCK_STALE;
                 }
                 else {
@@ -141,7 +140,6 @@ int lock_lock(struct lock *l, int lock_mode, struct store_tx *tx) {
                         // even better, we can upgrade right away 
                         l->first_wait_group->mode = LOCK_EXCLUSIVE;
                         pthread_mutex_unlock(&l->latch);
-                        printf("### lock upgraded\n");
                         return LOCK_TAKEN;
                     }
                     else {
@@ -162,6 +160,9 @@ int lock_lock(struct lock *l, int lock_mode, struct store_tx *tx) {
     l->last_wait_group->next = nwg;
     l->last_wait_group = nwg;
     // now wait for the lock to be available
+    // XXX this is also where we need to inform the deadlock detector, but needs
+    // working out how to determine the set of other TXes that this now blocks
+    // on. and how can we do the reverse operation in _unlock()?
     do {
         pthread_cond_wait(&nwg->sema, &l->latch);
     } while (nwg != l->first_wait_group);
