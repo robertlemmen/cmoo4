@@ -11,9 +11,6 @@
 
 // -------- internal structures --------
 
-// XXX set to fixed value now, needs to auto-tune and be configurable later
-#define THREAD_COUNT            2
-
 #define QUEUE_TYPE_STOP         0
 #define QUEUE_TYPE_INIT         1
 #define QUEUE_TYPE_ACCEPT       2
@@ -291,7 +288,8 @@ void* tasks_thread_func(void *arg) {
 
 // -------- implementation of public functions --------
 
-struct tasks_ctx* tasks_new_ctx(struct net_ctx *net, struct ntx_ctx *ntx, struct vm *vm) {
+struct tasks_ctx* tasks_new_ctx(struct net_ctx *net, struct ntx_ctx *ntx, 
+        struct vm *vm, int concurrency) {
     struct tasks_ctx *ret = malloc(sizeof(struct tasks_ctx));
     ret->net = net;
     ret->ntx = ntx;
@@ -310,7 +308,7 @@ struct tasks_ctx* tasks_new_ctx(struct net_ctx *net, struct ntx_ctx *ntx, struct
         exit(1);
     }
 
-    ret->num_threads = THREAD_COUNT;
+    ret->num_threads = concurrency;
     ret->thread_ids = malloc(sizeof(pthread_t) * ret->num_threads);
     for (int i = 0; i < ret->num_threads; i++) {
         if (pthread_create(&ret->thread_ids[i], NULL, tasks_thread_func, ret) != 0) {

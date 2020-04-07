@@ -27,13 +27,14 @@
 
 struct tasks_ctx;
 
-struct tasks_ctx* tasks_new_ctx(struct net_ctx *net, struct ntx_ctx *ntx, struct vm *vm);
+struct tasks_ctx* tasks_new_ctx(struct net_ctx *net, struct ntx_ctx *ntx, 
+    struct vm *vm, int concurrency);
 void tasks_free_ctx(struct tasks_ctx *ctx);
 
 void tasks_start(struct tasks_ctx *ctx);
 void tasks_stop(struct tasks_ctx *ctx);
 
-// some network stuff is procies through tasks, so we need corresponding
+// some network stuff is proxied through tasks, so we need corresponding
 // methods on tasks that can get called by the VM. these typically just provide callbacks that
 // use the tasks queue and pass right onto the networking subsystem
 void tasks_net_make_listener(struct tasks_ctx *ctx, unsigned int port, object_id oid);
@@ -41,6 +42,5 @@ void tasks_net_shutdown_listener(struct tasks_ctx *ctx, unsigned int port);
 void tasks_net_accept_socket(struct tasks_ctx *ctx, struct net_socket *socket, object_id oid);
 void tasks_net_socket_free(struct tasks_ctx *ctx, struct net_socket *socket);
 void tasks_net_socket_write(struct tasks_ctx *ctx, struct net_socket *socket, struct ntx_tx *net_tx, void *buf, size_t size);
-// XXX more of this
 
 #endif /* TASKS_H */

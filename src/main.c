@@ -8,6 +8,9 @@
 #include "vm.h"
 #include "store.h"
 
+// XXX set dynamically and allow overriding from config/cmdline
+#define TASK_CONCURRENCY    4
+
 struct ntx_ctx *ntx = NULL;
 struct tasks_ctx *tasks = NULL;
 struct vm *vm = NULL;
@@ -16,7 +19,7 @@ void net_init_cb(struct net_ctx *net) {
     printf("# net init callback\n");
 
     ntx = ntx_new_ctx(net);
-    tasks = tasks_new_ctx(net, ntx, vm);
+    tasks = tasks_new_ctx(net, ntx, vm, TASK_CONCURRENCY);
     tasks_start(tasks);
 }
 
