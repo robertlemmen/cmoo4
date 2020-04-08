@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 
 #include "cache.h"
 
@@ -20,6 +21,12 @@ struct store {
     // XXX kludge, need better allocator with persistence integration
     struct locks_ctx *locks_ctx;
     int alloc_id;
+    // the sid is sequential per store_tx and wraps around, used to determine
+    // the younger transaction in a deadlock
+    uint64_t sid_seq;
+    int max_tasks;
+    bool *cid_used;
+    pthread_mutex_t ids_latch;
 };
 
 struct lobject_list_node {
@@ -30,6 +37,8 @@ struct lobject_list_node {
 struct store_tx {
     struct store *store;
     struct lobject_list_node *locked;
+    uint64_t sid;
+    int cid;
 };
 
 // -------- implementation of public functions --------
@@ -43,8 +52,16 @@ struct store* store_new(struct persist *p, int max_tasks) {
         fprintf(stderr, "pthread_mutex_init failed\n");
         exit(1);
     }
+    if (pthread_mutex_init(&ret->ids_latch, NULL) != 0) {
+        fprintf(stderr, "pthread_mutex_init failed\n");
+        exit(1);
+    }
     ret->locks_ctx = locks_new_ctx(max_tasks);
     ret->alloc_id = 1000;
+    ret->sid_seq = 0;
+    ret->max_tasks = max_tasks;
+    ret->cid_used = malloc(sizeof(bool) * max_tasks);
+    memset(ret->cid_used, 0, sizeof(bool) * max_tasks); // memset for stdbool feels dirty...
     return ret;
 }
 
@@ -52,6 +69,8 @@ void store_free(struct store *s) {
     cache_free(s->cache);
     locks_free_ctx(s->locks_ctx);
     pthread_mutex_destroy(&s->cache_latch);
+    pthread_mutex_destroy(&s->ids_latch);
+    free(s->cid_used);
     free(s);
 }
 
@@ -59,7 +78,19 @@ struct store_tx* store_start_tx(struct store *s) {
     struct store_tx *ret = malloc(sizeof(struct store_tx));
     ret->store = s;
     ret->locked = NULL;
-    printf("## store_start_tx -> %p\n", ret);
+    pthread_mutex_lock(&s->ids_latch);
+    ret->sid = s->sid_seq++;
+    // allocate a cid, which is reused, and can never exceed max_tasks
+    for (int i = 0; i < s->max_tasks; i++) {
+        if (!s->cid_used[i]) {
+            s->cid_used[i] = true;
+            ret->cid = i;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&s->ids_latch);
+    assert(ret->cid < s->max_tasks);
+    printf("## store_start_tx -> %p sid:%i cid:%i\n", ret, ret->sid, ret->cid);
     return ret;
 }
 
@@ -76,6 +107,30 @@ void store_finish_tx(struct store_tx *tx) {
         free(temp);
     }
     pthread_mutex_unlock(&s->cache_latch);
+
+    pthread_mutex_lock(&s->ids_latch);
+    assert(s->cid_used[tx->cid]);
+    pthread_mutex_unlock(&s->ids_latch);
+    s->cid_used[tx->cid] = false;
+    free(tx);
+}
+
+uint64_t store_tx_get_sid(struct store_tx *tx) {
+    return tx->sid;
+}
+
+int store_tx_get_cid(struct store_tx *tx) {
+    return tx->cid;
+}
+
+struct store_tx *store_new_mock_tx(uint64_t sid, int cid) {
+    struct store_tx *ret = malloc(sizeof(struct store_tx));
+    memset(ret, 0, sizeof(struct store_tx));
+    ret->sid = sid;
+    ret->cid = cid;
+}
+
+void store_free_mock_tx(struct store_tx *tx) {
     free(tx);
 }
 

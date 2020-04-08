@@ -70,6 +70,9 @@ struct tasks_ctx {
     pthread_mutex_t queue_latch;
     pthread_cond_t queue_cond;
 
+    // XXX the locks currently take this from the store_tx, so we would not need
+    // this here. at the same time it feels like it should be here rather than
+    // there...
     uint64_t task_id_seq;
 };
 
