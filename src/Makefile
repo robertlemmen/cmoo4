@@ -36,6 +36,6 @@ clean:
 
 test: check
 check: $(OBJECTS) $(SUBDIRS)
-	make -C test check
+	$(MAKE) -C test check
 
 -include *.d

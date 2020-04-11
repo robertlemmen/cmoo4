@@ -117,8 +117,10 @@ void scaff_run(struct scaff_ctx *scaff) {
 
     void *retval;
     for (int t = 0; t < scaff->n_threads; t++) {
-        if (pthread_join(threads[t], &retval) != 0) {
-            ck_abort_msg("Could not join on thread");
+        if (pthread_timedjoin_np(threads[t], &retval, &ts) != 0) {
+            // XXX mark as failure but go on executing? perhaps have the join as
+            // a separate function and call after print_resutls?
+            //ck_abort_msg("Could not join on thread");
         }
     }
 }
@@ -450,7 +452,6 @@ END_TEST
 
 /* two threads that try to cross-lock two locks, this is a simple multi-lock
  * deadlock */
-/*
 char tfdead01(int t, int p, void *arg) {
     struct tfunc_args *tfa = arg;
     if (t == 0) {
@@ -460,11 +461,11 @@ char tfdead01(int t, int p, void *arg) {
         if (p == 1) {
             return map_lock_ret(lock_lock(tfa->locks[1], LOCK_EXCLUSIVE, tfa->txes[t]));
         }
-        else if (p == 2) {
+        else if (p == 5) {
             lock_unlock(tfa->locks[1], tfa->txes[t]);
             return 'U';
         }
-        else if (p == 3) {
+        else if (p == 6) {
             lock_unlock(tfa->locks[0], tfa->txes[t]);
             return 'U';
         }
@@ -473,14 +474,18 @@ char tfdead01(int t, int p, void *arg) {
         if (p == 0) {
             return map_lock_ret(lock_lock(tfa->locks[1], LOCK_EXCLUSIVE, tfa->txes[t]));
         }
-        if (p == 1) {
+        if (p == 2) {
             return map_lock_ret(lock_lock(tfa->locks[0], LOCK_EXCLUSIVE, tfa->txes[t]));
         }
-        else if (p == 2) {
+        // XXX we do not try to release this one as we expect the locking to
+        // have returned a DEADLOCK. but really, the unlock should just fail or
+        // return nothing! why does it not?
+        /*
+        else if (p == 3) {
             lock_unlock(tfa->locks[0], tfa->txes[t]);
             return 'U';
-        }
-        else if (p == 3) {
+        }*/
+        else if (p == 4) {
             lock_unlock(tfa->locks[1], tfa->txes[t]);
             return 'U';
         }
@@ -497,14 +502,14 @@ START_TEST(test_deadlock_01) {
     tfa.locks[1] = lock_new(locks);
     tfa.txes[0] = store_new_mock_tx(0, 0);
     tfa.txes[1] = store_new_mock_tx(1, 1);
-    struct scaff_ctx *scaff = scaff_new_ctx(2, 5, &tfdead01, &tfa);
+    struct scaff_ctx *scaff = scaff_new_ctx(2, 7, &tfdead01, &tfa);
 
     scaff_run(scaff);
     scaff_print_results(scaff);
 
     ck_scaff_assert(scaff,
-        "T..U."
-        "T.U..");
+        "T---TUU"
+        "T.D.U..");
 
     lock_free(tfa.locks[0]);
     lock_free(tfa.locks[1]);
@@ -513,7 +518,7 @@ START_TEST(test_deadlock_01) {
     scaff_free_ctx(scaff);
 }
 END_TEST
-*/
+
 TCase* make_rwlock_checks(void) {
     TCase *tc_rwlock;
 
@@ -524,7 +529,7 @@ TCase* make_rwlock_checks(void) {
     tcase_add_test(tc_rwlock, test_rwlock_04);
     tcase_add_test(tc_rwlock, test_rwlock_05);
 
-//    tcase_add_test(tc_rwlock, test_deadlock_01);
+    tcase_add_test(tc_rwlock, test_deadlock_01);
 
     return tc_rwlock;
 }
