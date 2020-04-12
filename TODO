@@ -3,14 +3,13 @@ C M O O   T O D O
 
 next main jobs
 --------------
-- test cases and implementation for multi-rwlock deadlock
-- exploratory test case for multi=object deadlock
-- cleanups and valgrind work
--> multi-threaded "echo" server
-
-after basic case works
-----------------------
-- start on compiler
+- deadlock detector needs more tests and fixes
+- currently you do not need to unlock a matching number of times when
+  re-locking. this does not sound safe, but perhaps the store handles this?
+- work on compiler/grammar
+- compiler should allow entry at top and at slot level
+- move compiler into main
+- logging from driver/core
 - error handling in eval.c
 - load objects from file
 - arrays

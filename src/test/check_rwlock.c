@@ -450,6 +450,69 @@ START_TEST(test_rwlock_05) {
 }
 END_TEST
 
+/* reentrant means we need to unlock a matching number of times */
+/* XXX see TODO
+char tfunc06(int t, int p, void *arg) {
+    struct tfunc_args *tfa = arg;
+    if (t == 0) {
+        if (p == 0) {
+            return map_lock_ret(lock_lock(tfa->locks[0], LOCK_SHARED, tfa->txes[t]));
+        }
+        else if (p == 1) {
+            return map_lock_ret(lock_lock(tfa->locks[0], LOCK_SHARED, tfa->txes[t]));
+        }
+        else if (p == 2) {
+            return map_lock_ret(lock_lock(tfa->locks[0], LOCK_EXCLUSIVE, tfa->txes[t]));
+        }
+        else if (p == 3) {
+            lock_unlock(tfa->locks[0], tfa->txes[t]);
+            return 'U';
+        }
+        else if (p == 4) {
+            lock_unlock(tfa->locks[0], tfa->txes[t]);
+            return 'U';
+        }
+        else if (p == 5) {
+            lock_unlock(tfa->locks[0], tfa->txes[t]);
+            return 'U';
+        }
+    }
+    else if (t == 1) {
+        if (p == 3) {
+            return map_lock_ret(lock_lock(tfa->locks[0], LOCK_EXCLUSIVE, tfa->txes[t]));
+        }
+        else if (p == 6) {
+            lock_unlock(tfa->locks[0], tfa->txes[t]);
+            return 'U';
+        }
+    }
+    return '.';
+}
+
+START_TEST(test_rwlock_06) {
+    printf("  test_rwlock_06...\n");
+
+    struct tfunc_args tfa;
+    struct locks_ctx *locks = locks_new_ctx(2);
+    tfa.locks[0] = lock_new(locks);
+    tfa.txes[0] = store_new_mock_tx(0, 0);
+    tfa.txes[1] = store_new_mock_tx(1, 1);
+    struct scaff_ctx *scaff = scaff_new_ctx(2, 7, &tfunc06, &tfa);
+
+    scaff_run(scaff);
+    scaff_print_results(scaff);
+
+    ck_scaff_assert(scaff,
+        "TTTUUU."
+        "...--TU");
+
+    lock_free(tfa.locks[0]);
+    store_free_mock_tx(tfa.txes[0]);
+    store_free_mock_tx(tfa.txes[1]);
+    scaff_free_ctx(scaff);
+}
+END_TEST*/
+
 /* two threads that try to cross-lock two locks, this is a simple multi-lock
  * deadlock */
 char tfdead01(int t, int p, void *arg) {
@@ -477,14 +540,6 @@ char tfdead01(int t, int p, void *arg) {
         if (p == 2) {
             return map_lock_ret(lock_lock(tfa->locks[0], LOCK_EXCLUSIVE, tfa->txes[t]));
         }
-        // XXX we do not try to release this one as we expect the locking to
-        // have returned a DEADLOCK. but really, the unlock should just fail or
-        // return nothing! why does it not?
-        /*
-        else if (p == 3) {
-            lock_unlock(tfa->locks[0], tfa->txes[t]);
-            return 'U';
-        }*/
         else if (p == 4) {
             lock_unlock(tfa->locks[1], tfa->txes[t]);
             return 'U';
@@ -519,6 +574,72 @@ START_TEST(test_deadlock_01) {
 }
 END_TEST
 
+/* this time the other one gets faulted because of the sid. also we successfully
+ * unlock a lock that we got a DEADLOCK on (idempotent unlock, kinda required by
+ * the reentrant lock) */
+char tfdead02(int t, int p, void *arg) {
+    struct tfunc_args *tfa = arg;
+    if (t == 0) {
+        if (p == 0) {
+            return map_lock_ret(lock_lock(tfa->locks[0], LOCK_EXCLUSIVE, tfa->txes[t]));
+        }
+        if (p == 1) {
+            return map_lock_ret(lock_lock(tfa->locks[1], LOCK_EXCLUSIVE, tfa->txes[t]));
+        }
+        else if (p == 3) {
+            lock_unlock(tfa->locks[1], tfa->txes[t]);
+            return 'U';
+        }
+        else if (p == 4) {
+            lock_unlock(tfa->locks[0], tfa->txes[t]);
+            return 'U';
+        }
+    }
+    else if (t == 1) {
+        if (p == 0) {
+            return map_lock_ret(lock_lock(tfa->locks[1], LOCK_EXCLUSIVE, tfa->txes[t]));
+        }
+        if (p == 2) {
+            return map_lock_ret(lock_lock(tfa->locks[0], LOCK_EXCLUSIVE, tfa->txes[t]));
+        }
+        else if (p == 5) {
+            lock_unlock(tfa->locks[0], tfa->txes[t]);
+            return 'U';
+        }
+        else if (p == 6) {
+            lock_unlock(tfa->locks[1], tfa->txes[t]);
+            return 'U';
+        }
+    }
+    return '.';
+}
+
+START_TEST(test_deadlock_02) {
+    printf("  test_deadlock_02...\n");
+
+    struct tfunc_args tfa;
+    struct locks_ctx *locks = locks_new_ctx(2);
+    tfa.locks[0] = lock_new(locks);
+    tfa.locks[1] = lock_new(locks);
+    tfa.txes[0] = store_new_mock_tx(1, 0);
+    tfa.txes[1] = store_new_mock_tx(0, 1);
+    struct scaff_ctx *scaff = scaff_new_ctx(2, 7, &tfdead02, &tfa);
+
+    scaff_run(scaff);
+    scaff_print_results(scaff);
+
+    ck_scaff_assert(scaff,
+        "T-DUU.."
+        "T.--TUU");
+
+    lock_free(tfa.locks[0]);
+    lock_free(tfa.locks[1]);
+    store_free_mock_tx(tfa.txes[0]);
+    store_free_mock_tx(tfa.txes[1]);
+    scaff_free_ctx(scaff);
+}
+END_TEST
+
 TCase* make_rwlock_checks(void) {
     TCase *tc_rwlock;
 
@@ -528,8 +649,10 @@ TCase* make_rwlock_checks(void) {
     tcase_add_test(tc_rwlock, test_rwlock_03);
     tcase_add_test(tc_rwlock, test_rwlock_04);
     tcase_add_test(tc_rwlock, test_rwlock_05);
+    //tcase_add_test(tc_rwlock, test_rwlock_06);
 
     tcase_add_test(tc_rwlock, test_deadlock_01);
+    tcase_add_test(tc_rwlock, test_deadlock_02);
 
     return tc_rwlock;
 }
