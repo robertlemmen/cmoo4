@@ -1,4 +1,4 @@
-GIT_VERSION := $(shell git log -1 --pretty=format:'g%h -- %ci')
+GIT_VERSION := $(shell git log -1 --pretty=format:'g%h -- %ci'| sed -e 's/[0-9]\{2\}:.*//')
 GIT_DIRTY := $(shell git describe --all --long --dirty | grep -q dirty && echo ' (locally modified)' || true)
 
 development.pdf: development.tex design_hl.pdf
