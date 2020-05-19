@@ -17,7 +17,8 @@ $(TARGET): cc_lex.o cc_par.o cc_ast.o $(OBJECTS)
 	@echo "Linking $@..."
 	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-main.o: cc_par.h cc_lex.h
+cmc.o: cc_par.h cc_lex.h cc_ast.h
+main.o: cc_ast.h
 cc_lex.o: cc_par.h
 cc_par.o: cc_lex.h
 cc_ast.o: cc_ast.c

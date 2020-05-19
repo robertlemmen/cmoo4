@@ -2,19 +2,31 @@
 #include <stdio.h>
 
 #include "cc_par.h"
+#include "cmc.h"
 
-#define YY_USER_ACTION {yylloc->first_line = yylineno; } 
-
+#define YY_USER_INIT   { yylineno = 1; } 
+#define YY_USER_ACTION { yylloc->first_line = yylineno; } 
 %}
 
 %option 8bit reentrant bison-bridge
-%option extra-type="YYNODESTATE *"
+%option extra-type="struct cmc_ctx *"
 %option warn noyywrap nodefault
 %option header-file="cc_lex.h"
 %option bison-locations
 %option yylineno
 
 %%
+
+%{
+if (yyget_extra(yyscanner)->mode == MODE_SLOT) {
+    yyget_extra(yyscanner)->mode = MODE_OFF;
+    return START_SLOT;
+}
+else if (yyget_extra(yyscanner)->mode == MODE_COMPUNIT) {
+    yyget_extra(yyscanner)->mode = MODE_OFF;
+    return START_COMPUNIT;
+}
+%}
 
 "//".*                  { /* comment XXX should also suport multi-line comments */ }
 

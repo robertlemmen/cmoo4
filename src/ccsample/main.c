@@ -1,8 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
-#include "cc_par.h"
-#include "cc_lex.h"
+#include "cmc.h"
+// XXX fro now we need access to the ast directly, also in the deps in the
+// makefile
 #include "cc_ast.h"
 
 size_t readfile(FILE *in, char **buffer) {
@@ -27,18 +29,16 @@ size_t readfile(FILE *in, char **buffer) {
 int main(void) {
     char *buffer = NULL;
     readfile(stdin, &buffer);
+    struct cmc_ctx *ctx = cmc_parse(buffer, MODE_COMPUNIT);
 
-    YYNODESTATE ast_state;
-    yynodeinit(&ast_state);
-
-    yyscan_t scanner;
-    yylex_init(&scanner);
-    yylex_init_extra(&ast_state, &scanner);
-    yy_scan_string(buffer, scanner);
-    yyparse(scanner);
-    yylex_destroy(scanner);
-
-    free(buffer);
+    if (!ctx->error) {
+        printf("------------------\n");
+        dump(ctx->resp, 0, false, false);
+        printf("------------------\n");
+    }
+    else {
+        fprintf(stderr, ctx->error_msg);
+    }
 
     return 0;
 }
