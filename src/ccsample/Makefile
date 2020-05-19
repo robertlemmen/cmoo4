@@ -17,7 +17,8 @@ $(TARGET): cc_lex.o cc_par.o cc_ast.o $(OBJECTS)
 	@echo "Linking $@..."
 	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-main.o: cc_par.h cc_lex.h
+cmc.o: cc_par.h cc_lex.h cc_ast.h
+main.o: cc_ast.h
 cc_lex.o: cc_par.h
 cc_par.o: cc_lex.h
 cc_ast.o: cc_ast.c
@@ -31,7 +32,7 @@ cc_ast.o: cc_ast.c
 cc_par.h: cc_par.c
 cc_par.c: cc.y
 	@echo "Generating $@..."
-	@$(BISON) --defines=cc_par.h -o$@ $<
+	@$(BISON) --defines=cc_par.h -o$@ -v $<
 
 cc_lex.h: cc_lex.c
 cc_lex.c: cc.l 
@@ -47,4 +48,4 @@ clean:
 	@echo "Cleaning..."
 	@rm -f $(TARGET)
 	@rm -f *.o *.d
-	@rm -f cc_par.c cc_par.h cc_lex.h cc_lex.c cc_ast.h cc_ast.c
+	@rm -f cc_par.c cc_par.h cc_lex.h cc_lex.c cc_ast.h cc_ast.c cc_par.output
