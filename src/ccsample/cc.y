@@ -143,9 +143,7 @@ StartSelector:    START_COMPUNIT File {
                 }
 
 File: CompUnitLine ObjectDefList {
-    printf("parsed file ok, compunit is '%s'\n", $1);
-    // XXX make a node for the compuint itself
-    $$ = $2;
+    $$ = comp_unit_create(&yyget_extra(scanner)->ast_state, $1, (list_entry*)$2);
 }
 
 CompUnitLine: CompUnit SYMBOL ';' {

@@ -53,6 +53,11 @@ typedef union
     list_entry *prev;
 }
 
+%node comp_unit ast_node = {
+    char *name;
+    list_entry *objects;
+}
+
 %node object_def ast_node = {
 	char *name;
 	bool exported;
@@ -138,6 +143,13 @@ typedef union
 }
 
 %operation void dump(ast_node *n, int d, bool first, bool comma)
+
+dump(comp_unit) {
+    printf("Compilation Unit '%s'\n", n->name);
+    if (n->objects) {
+        dump((ast_node*)n->objects, d+1, false, false);
+    }
+}
 
 dump(list_entry) {
     if (n->prev) {

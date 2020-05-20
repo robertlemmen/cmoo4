@@ -7,7 +7,7 @@ Exported Object Root  {
     Slot init(test, ofenrohr) {
         Var x = "ofenrohr";
         Var y = @zoom;
-        x = y.test(123);
+        x = _test(123);
         Return Not False Or True;
     }
    
