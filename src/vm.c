@@ -153,6 +153,8 @@ int vm_eval_ctx_exec(struct vm_eval_ctx *ex, val method, int num_args, ...) {
     }
 
     va_end(argp);
+    // XXX do we not need to tell the store to throw away all changes within the
+    // tx if ret != EVAL_OK
     store_finish_tx(ex->stx);
     return ret;
 }

@@ -3,12 +3,13 @@ C M O O   T O D O
 
 next main jobs
 --------------
+- store does not throw away changes on rollback of TX
+- work on compiler/grammar, full AST and what comes after (?)
+- move compiler into main
 - deadlock detector needs more tests and fixes
 - currently you do not need to unlock a matching number of times when
   re-locking. this does not sound safe, but perhaps the store handles this?
-- work on compiler/grammar
 - compiler should allow entry at top and at slot level
-- move compiler into main
 - logging from driver/core
 - error handling in eval.c
 - load objects from file
@@ -24,6 +25,9 @@ yakshaving
 
 non-code
 --------
+- better readme, and as markdown
+- the overview diagram isn't quite correct anymore
 - document vm evaluator and type system
-- LANGUAGE needs to move into the manual
+- LANGUAGE needs to move into the manual and be people-centric rather than
+  just BNF
 - more general documentation
