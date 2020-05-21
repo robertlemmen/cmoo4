@@ -1,11 +1,24 @@
 C M O O   T O D O
 =================
 
+compiler
+--------
+- finish the AST node set
+- fix the remaining grammar problems (see XXX)
+- dump_ast that looks less like code, more like the ast contents. graphviz?
+- put location into AST
+- variable scoping
+- SSA and allocation of these
+- determine last assignment of a variable in a branch of the tree
+- phi ?
+- asm generation helper functions
+- code generation
+- execute and check results
+- move compiler into main dir and integrate
+
 next main jobs
 --------------
 - store does not throw away changes on rollback of TX
-- work on compiler/grammar, full AST and what comes after (?)
-- move compiler into main
 - deadlock detector needs more tests and fixes
 - currently you do not need to unlock a matching number of times when
   re-locking. this does not sound safe, but perhaps the store handles this?
@@ -13,7 +26,7 @@ next main jobs
 - logging from driver/core
 - error handling in eval.c
 - load objects from file
-- arrays
+- arrays/hashes
 -> towards "talker"
 
 yakshaving

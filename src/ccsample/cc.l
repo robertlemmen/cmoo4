@@ -49,8 +49,8 @@ required anymore between e.g. a keyword and a symbol? */ }
 "<"                     { return LT; }
 ">="                    { return GE; }
 ">"                     { return GT; }
-"True"                  { yylval->bval = true; return BOOL; }
-"False"                 { yylval->bval = false; return BOOL; }
+"True"                  { return True; }
+"False"                 { return False; }
 "Nil"                   { return Nil; }
 "Return"                { return Return; }
 "While"                 { return While; }

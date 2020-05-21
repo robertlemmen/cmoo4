@@ -29,7 +29,7 @@ size_t readfile(FILE *in, char **buffer) {
 int main(void) {
     char *buffer = NULL;
     readfile(stdin, &buffer);
-    struct cmc_ctx *ctx = cmc_parse(buffer, MODE_COMPUNIT);
+    struct cmc_ctx *ctx = cmc_parse(buffer, MODE_SLOT);
 
     if (!ctx->error) {
         printf("------------------\n");

@@ -102,6 +102,16 @@ typedef union
     expression *ret_expr;
 }
 
+%node while_stmt statement = {
+    expression *cond;
+    block *body;
+}
+
+%node do_stmt statement = {
+    block *body;
+    expression *cond;
+}
+
 %node expr_exec statement = {
     expression *expr;
 }
@@ -243,6 +253,28 @@ dump(return_stmt) {
     indent[d*2] = '\0';
     printf("# %sreturn ", indent);
     dump((ast_node*)n->ret_expr, d, false, false);
+    printf(";\n");
+}
+
+dump(while_stmt) {
+    char *indent = alloca(d*2+1);
+    memset(indent, ' ', d*2);
+    indent[d*2] = '\0';
+    printf("# %swhile ", indent);
+    dump((ast_node*)n->cond, d, false, false);
+    printf(" {\n");
+    dump((ast_node*)n->body, d+1, false, false);
+    printf("%s}\n", indent);
+}
+
+dump(do_stmt) {
+    char *indent = alloca(d*2+1);
+    memset(indent, ' ', d*2);
+    indent[d*2] = '\0';
+    printf("# %sdo {", indent);
+    dump((ast_node*)n->body, d+1, false, false);
+    printf("%s} while ", indent);
+    dump((ast_node*)n->cond, d, false, false);
     printf(";\n");
 }
 

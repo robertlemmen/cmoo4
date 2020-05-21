@@ -44,7 +44,6 @@ unit, or just a slot */
 %token Clone
 %token And
 %token Or
-/* we should rerturn these two from the lexer, not BOOL */
 %token True
 %token False
 %token Nil
@@ -60,13 +59,6 @@ unit, or just a slot */
 %token Case
 %token Default
 
-%token EQ
-%token NE
-%token GE
-%token GT
-%token LE
-%token LT
-
 %token <sval> LOCAL_SYMBOL
 %token <sval> OBJECT_SYMBOL
 %token <sval> SYSTEM_SYMBOL
@@ -75,9 +67,7 @@ unit, or just a slot */
 %token <ival> INTEGER
 %token <fval> FLOAT
 %token <sval> STRING
-%token <bval> BOOL
 
-/* XXX Order in here? */
 %left And Or
 %left EQ NE
 %left LT LE GT GE
@@ -129,7 +119,7 @@ unit, or just a slot */
 %type <node> SwitchStmt
 %type <node> ForListStmt
 %type <node> ForLoopStmt
-%type <bval> ExportStatement
+%type <bval> ExportedTag
 %type <node> OptArgList
 %type <node> ArgList
 
@@ -157,12 +147,12 @@ ObjectDefList: %empty {
         $$ = list_entry_create(&yyget_extra(scanner)->ast_state, $2, (list_entry*)$1);
     }
 
-ObjectDef: ExportStatement Object SYMBOL '{' GlobalDefList SlotDefList '}' {
+ObjectDef: ExportedTag Object SYMBOL '{' GlobalDefList SlotDefList '}' {
         $$ = object_def_create(&yyget_extra(scanner)->ast_state, $3, $1, (list_entry*)$5,
                                             (list_entry*)$6);
     }
 
-ExportStatement: %empty {
+ExportedTag: %empty {
         $$ = false;
     }
     | Exported {
@@ -335,8 +325,11 @@ Literal: INTEGER {
     | STRING {
 		$$ = (ast_node*)literal_create(&yyget_extra(scanner)->ast_state, val_make_string(strlen($1), $1));
 	}
-    | BOOL {
-		$$ = (ast_node*)literal_create(&yyget_extra(scanner)->ast_state, val_make_bool($1));
+    | True {
+		$$ = (ast_node*)literal_create(&yyget_extra(scanner)->ast_state, val_make_bool(true));
+	}
+    | False {
+		$$ = (ast_node*)literal_create(&yyget_extra(scanner)->ast_state, val_make_bool(false));
 	}
     | Nil {
 		$$ = (ast_node*)literal_create(&yyget_extra(scanner)->ast_state, val_make_nil());
@@ -419,9 +412,16 @@ ReturnStmt: Return Expression ';' {
         $$ = (ast_node*)return_stmt_create(&yyget_extra(scanner)->ast_state, (expression*)$2);
     }
 
-WhileStmt: While Expression Block
+// XXX should also allow a local declaration ??
+WhileStmt: While Expression Block {
+        $$ = (ast_node*)while_stmt_create(&yyget_extra(scanner)->ast_state, 
+                                          (expression*)$2, (block*)$3);
+}
 
-DoStmt: Do Block While Expression ';'
+DoStmt: Do Block While Expression ';' {
+        $$ = (ast_node*)do_stmt_create(&yyget_extra(scanner)->ast_state, 
+                                          (block*)$2, (expression*)$4);
+}
 
 IfStmt: If Expression Block ElseIfList OptElse
 
@@ -431,8 +431,10 @@ ElseIfList: %empty
 OptElse: %empty
     | Else Block
 
+// XXX should also allow a local declaration!
 ForListStmt: For SYMBOL In Expression Block
 
+// xxx should also allow a local declaration!
 ForLoopStmt: For '(' SYMBOL '=' Expression ';' Expression ';' Expression ')' Block
 
 SwitchStmt: Switch Expression '{' SwitchCaseList SwitchDefault '}'
@@ -452,9 +454,8 @@ void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg) {
     if (ctx->error_msg) {
         free(ctx->error_msg);
     }
-    int ret = snprintf(ctx->error_msg, 0, "Error in line %i: %s\n", 
-        yyloc->first_line, msg);
+    char *fmt = "Error in line %i: %s\n";
+    int ret = snprintf(ctx->error_msg, 0, fmt, yyloc->first_line, msg);
     ctx->error_msg = malloc(ret);
-    snprintf(ctx->error_msg, ret, "Error in line %i: %s\n", 
-        yyloc->first_line, msg);
+    snprintf(ctx->error_msg, ret, fmt, yyloc->first_line, msg);
 }
