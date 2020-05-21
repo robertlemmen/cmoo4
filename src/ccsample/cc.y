@@ -68,6 +68,10 @@ unit, or just a slot */
 %token <fval> FLOAT
 %token <sval> STRING
 
+<<<<<<< HEAD
+=======
+/* XXX Order in here? */
+>>>>>>> 9066fa0f857cb7b17cb32e84208f8da27844d899
 %left And Or
 %left EQ NE
 %left LT LE GT GE
@@ -449,6 +453,7 @@ SwitchDefault: %empty
 
 %%
 
+// XXX this should just forward to the outer wih an extra parameter
 void yyerror(YYLTYPE *yyloc, yyscan_t scanner, char const *msg) {
     struct cmc_ctx *ctx = yyget_extra(scanner);
     if (ctx->error_msg) {
